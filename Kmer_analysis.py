@@ -33,7 +33,12 @@ parser.add_argument("-r", "--right_flank", help="Amino Acid sequence of Right Fl
 parser.add_argument("--replace_X", help="replace X's with flanking sequences",action="store_true",dest="replace_flag",default=False)
 cmd_args = parser.parse_args()
 
+#### Development Code Snippets ############
+#nx.connected_component_subgraphs(G) Can be used to get a list of subgraphs in graph.
 
+
+
+##################################
 #### Hardcoded Values ############
 max_score=cmd_args.kmer_size*17 #based on maximum positive in PAM250 matrix. This is the best possible score,
 min_score=cmd_args.kmer_size*-8
@@ -96,7 +101,7 @@ def load_sequences(curr_filename):
 	total_kmers = 0
 	in_handle = open(curr_filename, 'r')
 	master_dict = {}
-	if cmd_args.is_fastq:
+	if cmd_args.is_fastq: #if is_fastq
 		for line in in_handle:
 			if line_count%4 == 1:
 				curr_seq = line.rstrip().lower()
@@ -142,13 +147,18 @@ main_dict, total_main = load_sequences(os.path.abspath(cmd_args.in_filename))
 if cmd_args.in_background != "":
 	print("Input path resolved to:", os.path.abspath(cmd_args.in_background))
 	background_dict, total_back = load_sequences(os.path.abspath(cmd_args.in_background))
-	
-score_mat = PAM250_special() ## Selection of distance metric
+
+#Define Distance Matrix for comparing strings.
+score_mat = PAM250_special() 
+
 node_set = [(i,{'weight':j}) for i,j in main_dict.items() if j >= cmd_args.min_node]
+
+#Create Nodes in Network with a weight characteristic
 m_graph.add_nodes_from(node_set)
 node_weights = nx.get_node_attributes(m_graph,'weight').values()
 
 #If background is defined, check enrichment levels
+#Remove all nodes that have an enrichment lower than allowable enrichment.
 if cmd_args.in_background != "":
 	back_set = [(i,{'weight':j}) for i,j in background_dict.items()]
 	b_graph = nx.Graph()
@@ -176,16 +186,27 @@ plt.savefig("kmer_frequency_histo"+output_id+".png",format="png")
 
 print("Total Number of Nodes", str(len(m_graph.node)))
 
-for i in m_graph.nodes_iter(): #Insert Edges
+#Compute distances between nodes
+for i in m_graph.nodes_iter(): 
 	for j in past_set:
 		#print(i,j,[score_mat[i[c].upper(),j[c].upper()] for c in range(cmd_args.kmer_size)])
+		#Distance calculation between nodes
 		edge_weight = (sum((score_mat[i[c].upper(),j[c].upper()] for c in range(cmd_args.kmer_size)))-min_score)/(max_score-min_score)
 		if edge_weight >= cmd_args.min_edge:
-			m_graph.add_edge(i,j,weight=edge_weight)
+			m_graph.add_edge(i,j,weight=edge_weight) #Insert Edges if greater than minimum
 		
 	past_set.append(i)
 	if len(past_set) % 1000 == 0:
 		print(len(past_set))
+
+#If a background is defined, print out the nodes that meet the enrichment criteria but are being cut due to degree.
+del_out = open("kmer_deleted"+input_name+"_"+output_id+".txt", 'w')
+node_weight = nx.get_node_attributes(m_graph, 'weight')
+if cmd_args.in_background != "":
+	for n,d in m_graph.degree_iter():
+		if d < cmd_args.min_degree:
+			for i in range(node_weight[n]):
+				print(n,file=del_out)
 
 m_graph.remove_nodes_from([n for n,d in m_graph.degree_iter() if d < cmd_args.min_degree])
 node_weights = list(nx.get_node_attributes(b_graph,'weight').values())
@@ -203,5 +224,6 @@ kmer_out = open("kmer_output"+input_name+"_"+output_id+".txt", 'w')
 for n,ndata in m_graph.nodes(data=True):
 	for i in range(ndata['weight']):
 		print(n,file=kmer_out)
+kmer_out.close()
 
 #print(m_graph.edges(data=True))
