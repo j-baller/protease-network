@@ -78,16 +78,7 @@ def replace_Xs(peptide,replace_flag):
 		return [peptide[:len(front_list)], "".join(curr_str), peptide[(len(peptide)-len(back_list)):]]
 
 def prep_kmers():
-	curr_seq = line.rstrip().lower()
-				f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
-				if cmd_args.randomize_flag:
-					mid_str = ''.join(random.sample(mid_str, len(mid_str)))
-				curr_seq = f_str+mid_str+l_str
-				curr_seq = curr_seq.lower()
-				while len(curr_seq) >= cmd_args.kmer_size:
-					master_dict[curr_seq[0:cmd_args.kmer_size]] = master_dict.get(curr_seq[0:cmd_args.kmer_size], 0) + 1
-					curr_seq = curr_seq[1:]
-					total_kmers +=1
+
 
 def load_sequences(curr_filename):
 	total_kmers = 0
@@ -96,28 +87,48 @@ def load_sequences(curr_filename):
 	if cmd_args.is_fastq: #if is_fastq
 		for line in in_handle:
 			if line_count%4 == 1:
-				prep_kmers()
+				curr_seq = line.rstrip().lower()
+				f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
+				if cmd_args.randomize_flag:
+					mid_str = ''.join(random.sample(mid_str, len(mid_str)))
+				curr_seq = f_str+mid_str+l_str
+				curr_seq = curr_seq.lower()
+				pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
+				for coord in pos_zip:
+					reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
+					master_dict[curr_seq[coord[0]:coord[1]]] = master_dict.get(curr_seq[coord[0]:coord[1]], 0) + 1/(AA_poss**reduc_denom)
+					total_kmers += 1/(AA_poss**reduc_denom)
 		in_handle.close()
 		
 	else: #is_fasta
 		curr_seq = ""
 		for line in in_handle:
 			if line[0] == ">":
-				prep_kmers()
+				curr_seq = line.rstrip().lower()
+				f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
+				if cmd_args.randomize_flag:
+					mid_str = ''.join(random.sample(mid_str, len(mid_str)))
+				curr_seq = f_str+mid_str+l_str
+				curr_seq = curr_seq.lower()
+				pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
+				for coord in pos_zip:
+					reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
+					master_dict[curr_seq[coord[0]:coord[1]]] = master_dict.get(curr_seq[coord[0]:coord[1]], 0) + 1/(AA_poss**reduc_denom)
+					total_kmers += 1/(AA_poss**reduc_denom)
 				curr_seq = ""
 			else:
 				curr_seq = curr_seq + line.rstrip().lower()
+			curr_seq = line.rstrip().lower()
 			f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
-			
-			#If random Label Set, generate a randomized sequence set.
 			if cmd_args.randomize_flag:
 				mid_str = ''.join(random.sample(mid_str, len(mid_str)))
 			curr_seq = f_str+mid_str+l_str
 			curr_seq = curr_seq.lower()
-			while len(curr_seq) >= cmd_args.kmer_size:
-						master_dict[curr_seq[0:cmd_args.kmer_size]] = master_dict.get(curr_seq[0:cmd_args.kmer_size], 0) + 1
-						curr_seq = curr_seq[1:]
-						total_kmers +=1
+			pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
+			for coord in pos_zip:
+				reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
+				master_dict[curr_seq[coord[0]:coord[1]]] = master_dict.get(curr_seq[coord[0]:coord[1]], 0) + 1/(AA_poss**reduc_denom)
+				total_kmers += 1/(AA_poss**reduc_denom)
 		in_handle.close()
 	return((master_dict, total_kmers))
 
@@ -148,7 +159,7 @@ master_dict = {}
 m_graph = nx.Graph()
 
 #Define Distance Matrix for comparing strings.
-score_mat = PAM250_special()
+#score_mat = PAM250_special()
 pd = scoring_distance(cmd_args.norm_flag)
 
 print("Input path resolved to:", os.path.abspath(cmd_args.in_filename))
