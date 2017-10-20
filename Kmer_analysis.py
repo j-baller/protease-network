@@ -60,10 +60,11 @@ cmd_args = parser.parse_args()
 
 
 ##################################
-#### Hardcoded Values ############ #Should no longer be used, derived directly from loaded matrix
+#### Hardcoded Values ############ #Min/Max Score Should no longer be used, derived directly from loaded matrix
 #max_score=cmd_args.kmer_size*17 #based on maximum positive in PAM250 matrix. This is the best possible score,
 #min_score=cmd_args.kmer_size*-8
 # rescaling is then, for score S, edge_weight =(S-min_score)/(max_score-min_score), making a score of 1 == perfect and a score of 0 equal to worst possible.
+AA_poss = 20
 ##################################
 input_name = cmd_args.in_filename.split(".")[0]
 
@@ -76,7 +77,7 @@ def replace_Xs(peptide,replace_flag):
 	else:
 		return [peptide[:len(front_list)], "".join(curr_str), peptide[(len(peptide)-len(back_list)):]]
 
-def prep_kmer():
+def prep_kmers():
 	curr_seq = line.rstrip().lower()
 				f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
 				if cmd_args.randomize_flag:
@@ -95,14 +96,14 @@ def load_sequences(curr_filename):
 	if cmd_args.is_fastq: #if is_fastq
 		for line in in_handle:
 			if line_count%4 == 1:
-				prep_kmer()
+				prep_kmers()
 		in_handle.close()
 		
 	else: #is_fasta
 		curr_seq = ""
 		for line in in_handle:
 			if line[0] == ">":
-				prep_kmer()
+				prep_kmers()
 				curr_seq = ""
 			else:
 				curr_seq = curr_seq + line.rstrip().lower()
