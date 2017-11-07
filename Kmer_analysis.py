@@ -1,4 +1,5 @@
 import os;
+import sys;
 import argparse
 import networkx as nx
 import matplotlib
@@ -6,7 +7,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import random
 import math
-import compare_peptides #Local Module
+import compare_peptides as cp #Local Module
  
 
 parser = argparse.ArgumentParser(description=\
@@ -37,7 +38,7 @@ parser.add_argument("-r", "--right_flank", help="Amino Acid sequence of Right Fl
 parser.add_argument("--replace_X", help="replace X's with flanking sequences",action="store_true",dest="replace_flag",default=False)
 parser.add_argument('-x', "--enrichment_only", help="only perform enrichment checking, skip network filtering",action="store_true",dest="enrich_flag",default=False)
 parser.add_argument('-z', "--control_zero_option", help="How to handle cases where the control pool has zeros when determining enrichment",required=False,dest="control_zero",default="average",choices=['average','avg','pseudo'])
-parser.add_argument('-n', '--normalize_off',action="store_false",dest="norm_flag",default=True, \
+parser.add_argument('-s', '--normalize_off',action="store_false",dest="norm_flag",default=True, \
   help="Shuts per comparision normalization off, returns a score in cale of actual amino acid matrix")
 parser.add_argument('-a', '--align',action="store_true",dest="align_flag",default=False, \
   help="Return maximum score obtainable by sliding kmers relative to each other rather than assuming they are already aligned. Edges are padded with Xs")
@@ -77,14 +78,12 @@ def replace_Xs(peptide,replace_flag):
 	else:
 		return [peptide[:len(front_list)], "".join(curr_str), peptide[(len(peptide)-len(back_list)):]]
 
-def prep_kmers():
-
-
 def load_sequences(curr_filename):
 	total_kmers = 0
 	in_handle = open(curr_filename, 'r')
 	master_dict = {}
 	if cmd_args.is_fastq: #if is_fastq
+		raise ValueError("Currently missing fastq module")	
 		for line in in_handle:
 			if line_count%4 == 1:
 				curr_seq = line.rstrip().lower()
@@ -104,31 +103,40 @@ def load_sequences(curr_filename):
 		curr_seq = ""
 		for line in in_handle:
 			if line[0] == ">":
-				curr_seq = line.rstrip().lower()
-				f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
-				if cmd_args.randomize_flag:
-					mid_str = ''.join(random.sample(mid_str, len(mid_str)))
-				curr_seq = f_str+mid_str+l_str
-				curr_seq = curr_seq.lower()
-				pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
-				for coord in pos_zip:
-					reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
-					master_dict[curr_seq[coord[0]:coord[1]]] = master_dict.get(curr_seq[coord[0]:coord[1]], 0) + 1/(AA_poss**reduc_denom)
-					total_kmers += 1/(AA_poss**reduc_denom)
-				curr_seq = ""
+				if curr_seq != "":
+					f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
+					if cmd_args.randomize_flag:
+						mid_str = ''.join(random.sample(mid_str, len(mid_str)))
+					curr_seq = f_str+mid_str+l_str
+					curr_seq = curr_seq.lower()
+					pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
+					for coord in pos_zip:
+						reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
+						sav_kmer = curr_seq[coord[0]:coord[1]]
+						if "_" in sav_kmer:
+							print(line, file=sys.stderr)
+							print(curr_seq, file=sys.stderr)
+							raise ValueError()
+						master_dict[sav_kmer] = master_dict.get(sav_kmer, 0) + 1/(AA_poss**reduc_denom)
+						total_kmers += 1/(AA_poss**reduc_denom)
 			else:
 				curr_seq = curr_seq + line.rstrip().lower()
-			curr_seq = line.rstrip().lower()
-			f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
-			if cmd_args.randomize_flag:
-				mid_str = ''.join(random.sample(mid_str, len(mid_str)))
-			curr_seq = f_str+mid_str+l_str
-			curr_seq = curr_seq.lower()
-			pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
-			for coord in pos_zip:
-				reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
-				master_dict[curr_seq[coord[0]:coord[1]]] = master_dict.get(curr_seq[coord[0]:coord[1]], 0) + 1/(AA_poss**reduc_denom)
-				total_kmers += 1/(AA_poss**reduc_denom)
+		curr_seq = line.rstrip().lower()
+		f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
+		if cmd_args.randomize_flag:
+			mid_str = ''.join(random.sample(mid_str, len(mid_str)))
+		curr_seq = f_str+mid_str+l_str
+		curr_seq = curr_seq.lower()
+		pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
+		for coord in pos_zip:
+			reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
+			sav_kmer = curr_seq[coord[0]:coord[1]]
+			if "_" in sav_kmer:
+				print(line, file=sys.stderr)
+				print(curr_seq, file=sys.stderr)
+				raise ValueError()
+			master_dict[sav_kmer] = master_dict.get(sav_kmer, 0) + 1/(AA_poss**reduc_denom)
+			total_kmers += 1/(AA_poss**reduc_denom)
 		in_handle.close()
 	return((master_dict, total_kmers))
 
@@ -160,7 +168,7 @@ m_graph = nx.Graph()
 
 #Define Distance Matrix for comparing strings.
 #score_mat = PAM250_special()
-pd = scoring_distance(cmd_args.norm_flag)
+pd = cp.scoring_distance(cmd_args.norm_flag)
 
 print("Input path resolved to:", os.path.abspath(cmd_args.in_filename))
 main_dict, total_main = load_sequences(os.path.abspath(cmd_args.in_filename))
@@ -230,10 +238,15 @@ for i in m_graph.nodes_iter():
 	for j in past_set:
 		#print(i,j,[score_mat[i[c].upper(),j[c].upper()] for c in range(cmd_args.kmer_size)])
 		#Distance calculation between nodes
-		if cmd_args.align_flag:
-			edge_weight = pd.compare_peptides_mp(i,j)
-		else:
-			edge_weight = pd.compare_peptides_sp(i,j)
+		try:
+			if cmd_args.align_flag:
+				edge_weight = pd.compare_peptides_mp(i,j)
+			else:
+				edge_weight = pd.compare_peptides_sp(i,j)
+		except KeyError:
+			print(str(i)+" "+str(j), file=sys.stderr)
+			print(list(m_graph.nodes_iter()), file=sys.stderr)
+			raise
 		#edge_weight = (sum((score_mat[i[c].upper(),j[c].upper()] for c in range(cmd_args.kmer_size)))-min_score)/(max_score-min_score) #Old edge weight code, now in external module
 		if edge_weight >= cmd_args.min_edge:
 			m_graph.add_edge(i,j,weight=edge_weight) #Insert Edges if greater than minimum
