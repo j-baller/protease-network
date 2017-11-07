@@ -1,14 +1,8 @@
 #!/bin/bash -el
-#PBS -l nodes=1:ppn=21,mem=30gb,walltime=24:00:00 -q ram1t
+#PBS -l nodes=1:ppn=10,mem=580gb,walltime=48:00:00 -q ram1t
 #PBS -m abe
 
 module load python3
-
-k=4
-n=35
-e=10
-d=4
-c=0.65
 
 cd ~/Seelig
 
@@ -16,28 +10,42 @@ kmer_set()
 {
 	casefile=$1
 	controlfile=$2
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
-	wait
+	k=$3
+	n=$4
+	e=$5
+	d=$6
+	c=$7
+	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --replace_X 
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
+	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
 
 }
-kmer_set "Fxa20R1.pep.pt.fasta" "ResinLibrary.pt.fasta"
-kmer_set "Fxa1R1.pep.pt.fasta"  "ResinLibrary.pt.fasta" 
-kmer_set "ADAM171R1.pep.pt.fasta"  "ResinLibrary.pt.fasta" 
-kmer_set "ADAM1750R1.pep.pt.fasta"  "ResinLibrary.pt.fasta" 
-kmer_set "Fxa400R1.pep.pt.fasta"  "ResinLibrary.pt.fasta" 
-kmer_set "SpeB1R1.pep.pt.fasta"  "ResinLibrary.pt.fasta" 
-kmer_set "SpeB20R1.pep.pt.fasta"  "ResinLibrary.pt.fasta" 
-kmer_set "SpeB400R1.pep.pt.fasta"  "ResinLibrary.pt.fasta"  
+#kmer_set "Fxa20R1.pep.pt.fasta" "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+#kmer_set "Fxa1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+#kmer_set "ADAM171R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+#kmer_set "ADAM1750R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+#kmer_set "Fxa400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+#kmer_set "SpeB1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+#kmer_set "SpeB20R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+#kmer_set "SpeB400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 15 4 4 0.65 &
+
+kmer_set "Fxa20R1.pep.pt.fasta" "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+kmer_set "Fxa1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+kmer_set "ADAM171R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+kmer_set "ADAM1750R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+kmer_set "Fxa400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+kmer_set "SpeB1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+kmer_set "SpeB20R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+kmer_set "SpeB400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 11 10 5 0.65 &
+wait
 
 #171R1.pep.pt.fasta                Fxa20R2.pep.pt.fasta              SpeB20R1.pep.pt.fasta
 #A1750R1.pep.pt.fasta               Fxa400R1.pep.pt.fasta             SpeB20R1.pt.fasta
