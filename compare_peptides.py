@@ -1,5 +1,6 @@
 import os;
 import math;
+import itertools
 
 class PWM:
 	__init__(self,in_str,score_obj):
@@ -26,10 +27,16 @@ class PWM:
 		align_score =0
 		for p in range(n_iter):
 			if idx1[p] == -1 and indx2[p] == -1:
-				
-		edge_weight = (sum((self[pep1[c].upper(),pep2[c].upper()]-self.min_score)/(self.max_score-self.min_score) for c in range(n_iter)))/n_iter
+				align_score += self.score_obj['X','X']
+			elif idx1[p] == -1:
+				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm2[idx2[p]].items()])/sum(pwm2[idx2[p]].values())
+			elif idx2[p] == -1:
+				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm1[idx1[p]].items()])/sum(pwm1[idx1[p]].values())
+			else:
+				align_score += sum((self.score_obj[tup1[0],tup2[0]]*tup1[1]*tup2[1] for tup1, tup2 in itertools.product(pwm1[idx1[p]].items(), pwm2[idx2[p]].items())))/(sum(pwm1[idx1[p]].values())*sum(pwm1[idx1[p]].values()))
+		#edge_weight = (sum((self[pep1[c].upper(),pep2[c].upper()]-self.min_score)/(self.max_score-self.min_score) for c in range(n_iter)))/n_iter
 
-		return(edge_weight)
+		#return(edge_weight)
 		
 	def __add__(self, other):
 		if type(other) == str:
