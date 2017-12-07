@@ -1,13 +1,15 @@
 import os;
 import math;
 import itertools
+from collections import Counter 
+from operator import itemgetter
 
 class PWM:
-	__init__(self,in_str,score_obj):
-		self._curr_PWM = [Counter(char) for char in in_str]
+	def __init__(self,in_str,score_obj):
+		self._curr_PWM = [Counter(char) for char in in_str.upper()]
 		self.score_obj = score_obj
 		self.coherance = 0
-	def length(self)
+	def length(self):
 		return len(self._curr_PWM)
 	
 	def _compare_PWM_sp(self, pwm1, pwm2, phase=0):
@@ -34,9 +36,17 @@ class PWM:
 				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm1[idx1[p]].items()])/sum(pwm1[idx1[p]].values())
 			else:
 				align_score += sum((self.score_obj[tup1[0],tup2[0]]*tup1[1]*tup2[1] for tup1, tup2 in itertools.product(pwm1[idx1[p]].items(), pwm2[idx2[p]].items())))/(sum(pwm1[idx1[p]].values())*sum(pwm1[idx1[p]].values()))
+		return((align_score,(idx1, idx2)))
 		#edge_weight = (sum((self[pep1[c].upper(),pep2[c].upper()]-self.min_score)/(self.max_score-self.min_score) for c in range(n_iter)))/n_iter
 
-		#return(edge_weight)
+	def _compare_PWM_mp(self, pwm1,pwm2)
+		phases = pwm1.length()+pwm2.length()-1
+		min_phase = -1*pep2.length()+1
+		out = []
+		#Total phases are (n+m)-1, 
+		for p in range(min_phase, phases+min_phase):
+			out.append(self._compare_peptides_sp(pwm1,pwm2,phase=p))
+		return(max(out,key=itemgetter(0))[1])
 		
 	def __add__(self, other):
 		if type(other) == str:
@@ -44,7 +54,11 @@ class PWM:
 		elif type(other) == PWM:
 			if self.score_obj != other.score_obj:
 				raise TypeError('Addition PWMs is only defined for PWMs using the same scoring object')
-			self._compare_PWM_mp(self.score_obj, other.score_obj)
+			m_idx1, m_idx2 = self._compare_PWM_mp(self.score_obj, other.score_obj)
+			out_PWM = self.copy()
+			out_PWM._curr_PWM = out_PWM._curr_PWM.copy()
+			[ for i1,i2 in zip(m_idx1,m_idx2)]
+			
 		else:
 			raise TypeError('Addition of PWMs is only defined for Strings and PWMs')
 		
@@ -100,7 +114,6 @@ class scoring_distance(object):
 			out.append(self.compare_peptides_sp(pep1,pep2,phase=p))
 		if self._debug: print(list(zip(range(min_phase, phases+min_phase), out)))
 		return(max(out), [min_phase+i for i, j in enumerate(out) if j == max(out)])
-	def
 			 
 		
 if __name__ == "__main__":
