@@ -12,6 +12,10 @@ import copy
 #sd = cp.scoring_distance()
 #cp.PWM('ACDR',sd)
 
+def compare_nodes():
+	pass
+	
+
 
 class PWM:
 	def __init__(self,in_str,score_obj,rep=1):
@@ -52,7 +56,7 @@ class PWM:
 			elif idx2[p] == -1:
 				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm1[idx1[p]].items()])/sum(pwm1[idx1[p]].values())
 			else:
-				align_score += sum((self.score_obj[tup1[0],tup2[0]]*tup1[1]*tup2[1] for tup1, tup2 in itertools.product(pwm1[idx1[p]].items(), pwm2[idx2[p]].items())))/(sum(pwm1[idx1[p]].values())*sum(pwm1[idx1[p]].values()))
+				align_score += sum((self.score_obj[tup1[0],tup2[0]]*tup1[1]*tup2[1] for tup1, tup2 in itertools.product(pwm1[idx1[p]].items(), pwm2[idx2[p]].items())))/(sum(pwm1[idx1[p]].values())*sum(pwm2[idx2[p]].values()))
 		return((align_score,(idx1, idx2)))
 		#edge_weight = (sum((self[pep1[c].upper(),pep2[c].upper()]-self.min_score)/(self.max_score-self.min_score) for c in range(n_iter)))/n_iter
 
@@ -63,15 +67,31 @@ class PWM:
 		#Total phases are (n+m)-1, 
 		for p in range(min_phase, phases+min_phase):
 			out.append(self._compare_PWM_sp(pwm1,pwm2,phase=p))
-		return(max(out,key=itemgetter(0))[1])
+		res_max = max(out,key=itemgetter(0))
+		return((res_max[0],res_max[1]))
+		
+	def __mul__(self, other):
+		if type(other) == str:
+			return(self*PWM(other, self.score_obj))
+		elif type(other) == PWM:
+			if self.score_obj != other.score_obj:
+				raise TypeError('Scoring of PWMs is only defined for PWMs using the same scoring object')
+			m_score, m_idxs = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
+			return(m_score)
+		else:
+			raise TypeError('Scoring of PWMs is only defined for Strings and PWMs')
+			
+	def __rmul__(self, other):
+		return(self.__mul__(other))
 		
 	def __add__(self, other):
 		if type(other) == str:
-			self+PWM(str, self.score_obj)
+			return(self+PWM(other, self.score_obj))
 		elif type(other) == PWM:
 			if self.score_obj != other.score_obj:
-				raise TypeError('Addition PWMs is only defined for PWMs using the same scoring object')
-			m_idx1, m_idx2 = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
+				raise TypeError('Addition of PWMs is only defined for PWMs using the same scoring object')
+			m_score, m_idxs = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
+			m_idx1, m_idx2 = m_idxs
 			out_PWM = copy.copy(self)
 			for pos, idxs in enumerate(zip(m_idx1,m_idx2)):
 				if idxs[0] == -1 and idxs[1] == -1:
@@ -87,6 +107,8 @@ class PWM:
 			return(out_PWM)
 		else:
 			raise TypeError('Addition of PWMs is only defined for Strings and PWMs')
+	def __radd__(self,other):
+		return(self.__add__(other))
 		
 class scoring_distance(object):
 	"""The PAM250 scoring matrix class."""
