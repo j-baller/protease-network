@@ -3,33 +3,50 @@ import math;
 import itertools
 from collections import Counter 
 from operator import itemgetter
+import copy
+
+#For testing
+#import sys
+#sys.path.insert(0, "/Users/Joshua Baller/Documents/Seelig/protease-sites/")
+#import compare_peptides as cp
+#sd = cp.scoring_distance()
+#cp.PWM('ACDR',sd)
+
 
 class PWM:
-	def __init__(self,in_str,score_obj):
-		self._curr_PWM = [Counter(char) for char in in_str.upper()]
+	def __init__(self,in_str,score_obj,rep=1):
+		self._curr_PWM = [Counter({char:rep}) for char in in_str.upper()]
 		self.score_obj = score_obj
-		self.coherance = 0
+		self._depth = rep
+	
+	def __copy__(self):
+		new_pwm = PWM('',self.score_obj)
+		new_pwm._depth = self._depth
+		new_pwm._curr_PWM = copy.deepcopy(self._curr_PWM)
+		return(new_pwm)	
+	
 	def length(self):
 		return len(self._curr_PWM)
 	
 	def _compare_PWM_sp(self, pwm1, pwm2, phase=0):
-		idx1 = range(0,pwm1.length())
-		idx2 = range(0,pwm2.length())
+		idx1 = list(range(0,len(pwm1)))
+		idx2 = list(range(0,len(pwm2)))
 		if phase > 0:
 			idx2 = [-1]*phase + idx2
 		elif phase < 0:
 			idx1 = [-1]*abs(phase) + idx1
-		if len(pep1) > len(pep2):
+		if len(idx1) > len(idx2):
 			idx2 = idx2 + [-1]*(len(idx1) - len(idx2))
-		elif len(pep2) > len(pep1):
+		elif len(idx2) > len(idx1):
 			idx1 = idx1 + [-1]*(len(idx2) - len(idx1))
 		n_iter = len(idx1) #equal to len(pep2) due to 'X' padding
 		
 		#Still needs work below here
 		align_score =0
 		for p in range(n_iter):
-			if idx1[p] == -1 and indx2[p] == -1:
+			if idx1[p] == -1 and idx2[p] == -1: #This case should probably never happen
 				align_score += self.score_obj['X','X']
+				print("Double end gap occurred")
 			elif idx1[p] == -1:
 				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm2[idx2[p]].items()])/sum(pwm2[idx2[p]].values())
 			elif idx2[p] == -1:
@@ -39,13 +56,13 @@ class PWM:
 		return((align_score,(idx1, idx2)))
 		#edge_weight = (sum((self[pep1[c].upper(),pep2[c].upper()]-self.min_score)/(self.max_score-self.min_score) for c in range(n_iter)))/n_iter
 
-	def _compare_PWM_mp(self, pwm1,pwm2)
-		phases = pwm1.length()+pwm2.length()-1
-		min_phase = -1*pep2.length()+1
+	def _compare_PWM_mp(self, pwm1,pwm2):
+		phases = len(pwm1)+len(pwm2)-1
+		min_phase = -1*len(pwm2)+1
 		out = []
 		#Total phases are (n+m)-1, 
 		for p in range(min_phase, phases+min_phase):
-			out.append(self._compare_peptides_sp(pwm1,pwm2,phase=p))
+			out.append(self._compare_PWM_sp(pwm1,pwm2,phase=p))
 		return(max(out,key=itemgetter(0))[1])
 		
 	def __add__(self, other):
@@ -54,11 +71,20 @@ class PWM:
 		elif type(other) == PWM:
 			if self.score_obj != other.score_obj:
 				raise TypeError('Addition PWMs is only defined for PWMs using the same scoring object')
-			m_idx1, m_idx2 = self._compare_PWM_mp(self.score_obj, other.score_obj)
-			out_PWM = self.copy()
-			out_PWM._curr_PWM = out_PWM._curr_PWM.copy()
-			[ for i1,i2 in zip(m_idx1,m_idx2)]
-			
+			m_idx1, m_idx2 = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
+			out_PWM = copy.copy(self)
+			for pos, idxs in enumerate(zip(m_idx1,m_idx2)):
+				if idxs[0] == -1 and idxs[1] == -1:
+					print("Double end gap occurred")
+					out_PWM._curr_PWM.insert(pos, Counter({'-':(self._depth+other._depth)}))
+				elif idxs[0] == -1:
+					out_PWM._curr_PWM.insert(pos, Counter({'-':self._depth})+other._curr_PWM[idxs[1]])
+				elif idxs[1] == -1:
+					out_PWM._curr_PWM[pos] = self._curr_PWM[idxs[0]] + Counter({'-':other._depth})
+				else:
+					out_PWM._curr_PWM[pos] = self._curr_PWM[idxs[0]] + other._curr_PWM[idxs[1]]
+			out_PWM._depth = self._depth+ other._depth
+			return(out_PWM)
 		else:
 			raise TypeError('Addition of PWMs is only defined for Strings and PWMs')
 		
@@ -89,13 +115,13 @@ class scoring_distance(object):
 			
 	def compare_peptides_sp(self,pep1, pep2, phase=0):
 		if phase > 0:
-			pep2 = 'X'*phase + pep2
+			pep2 = '-'*phase + pep2
 		elif phase < 0:
-			pep1 = 'X'*abs(phase) + pep1
+			pep1 = '-'*abs(phase) + pep1
 		if len(pep1) > len(pep2):
-			pep2 = pep2 + 'X'*(len(pep1) - len(pep2))
+			pep2 = pep2 + '-'*(len(pep1) - len(pep2))
 		elif len(pep2) > len(pep1):
-			pep1 = pep1 + 'X'*(len(pep2) - len(pep1))
+			pep1 = pep1 + '-'*(len(pep2) - len(pep1))
 		n_iter = len(pep1) #equal to len(pep2) due to 'X' padding
 		edge_weight = (sum((self[pep1[c].upper(),pep2[c].upper()]-self.min_score)/(self.max_score-self.min_score) for c in range(n_iter)))/n_iter
 		if self._debug: print(pep1.upper(), pep2.upper(), n_iter)
