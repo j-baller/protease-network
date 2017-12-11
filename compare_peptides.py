@@ -12,9 +12,50 @@ import copy
 #sd = cp.scoring_distance()
 #cp.PWM('ACDR',sd)
 
-def compare_nodes():
-	pass
+def read_kmer_out_to_dict(filename):
+	curr_handle = open(filename, 'r')
+	out_dict = Counter()
+	for line in curr_handle:
+		line = line.rstrip()
+		out_dict[line] += 1
+	return(out_dict)
+		
+		
 	
+
+class Clustering:
+	def __init__(self, kmer_dict,scoring_class):
+		self.kmers = kmer_dict
+		self.score = scoring_class
+		self._full_PWM = self._build_hiercluster()
+	def _build_hiercluster(self):
+		item_list = [PWM(i,self.score,j) for i,j in self.kmers.items()] # Convert kmer input into a list of individual PWMs
+		pair_iter =itertools.combinations(item_list,2) 
+		score_list = [(i,j,i*j) for i,j in pair_iter]
+		while len(item_list) > 1:
+			print(len(item_list))
+			max_item = max(score_list,key=itemgetter(2))
+			score_list = [(i,j,k) for i,j,k in score_list if i not in (max_item[0], max_item[1]) and j not in (max_item[0], max_item[1])] # strip nodes being removed
+			item_list = [i for i in item_list if i not in (max_item[0], max_item[1])]
+			new_node = max_item[0]+max_item[1]
+			score_list = score_list + [(new_node, i, new_node*i) for i in item_list]
+			item_list.append(new_node)
+		return(item_list[0])
+		
+	def get_pwm(self):
+		return(self._full_PWM)
+		
+	def write_alignment(self,out_file):
+		out_handle = open(out_file, 'w')
+		PWM_elem = (t.elements() for t in self._full_PWM._curr_PWM)
+		PWM_elem = ("".join(z) for z in zip(*PWM_elem))
+		for line in PWM_elem:
+			print(line, file=out_handle)
+		
+		
+			
+		
+		
 class PWM:
 	def __init__(self,in_str,score_obj,rep=1):
 		self._curr_PWM = [Counter({char:rep}) for char in in_str.upper()]
@@ -77,6 +118,7 @@ class PWM:
 			m_score, m_idxs = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
 			return(m_score)
 		else:
+			print((self,other))
 			raise TypeError('Scoring of PWMs is only defined for Strings and PWMs')
 			
 	def __rmul__(self, other):
@@ -141,7 +183,14 @@ class scoring_distance(object):
 				raise 
 			return ((self.scoring_matrix[pair[0]][pair[1]]-char_min)/(char_max-char_min))*(self.max_score-self.min_score)+self.min_score #Per position normalization. Norm is 0 to 1, *25-8 resets range to -8 to 17
 		else:
-			return self.scoring_matrix[pair[0]][pair[1]]
+			try:
+				return self.scoring_matrix[pair[0]][pair[1]]
+			except KeyError:
+				print("Key Error occured while attempting to extract a particular pair from the AA matrix, likely causes are invalid comparison matrix file or invalid peptide input", file=sys.stderr)
+				print("First item is "+str(pair[0])+", second item is "+str(pair[1])+".", file=sys.stderr)
+				print("First level of scoring matrix", file=sys.stderr)
+				print(self.scoring_matrix[pair[0]], file=sys.stderr)
+				raise 
 			
 	def compare_peptides_sp(self,pep1, pep2, phase=0):
 		if phase > 0:

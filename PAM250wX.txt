@@ -348,7 +348,8 @@ S T 1
 S V -1
 S W -2
 S Y -3
-S X 0 
+S X 0
+S - -1
 T A 1
 T C -2
 T D 0
