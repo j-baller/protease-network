@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import random
 import math
 import compare_peptides as cp #Local Module
- 
+from collections import Counter 
 
 parser = argparse.ArgumentParser(description=\
   'This program accepts fasta or fastq files and analyzes kmer distribution of a fixed size')
@@ -42,7 +42,13 @@ parser.add_argument('-s', '--normalize_off',action="store_false",dest="norm_flag
   help="Shuts per comparision normalization off, returns a score in cale of actual amino acid matrix")
 parser.add_argument('-a', '--align',action="store_true",dest="align_flag",default=False, \
   help="Return maximum score obtainable by sliding kmers relative to each other rather than assuming they are already aligned. Edges are padded with Xs")
+parser.add_argument('--debug',action="store_true",dest="debug_flag",default=False, \
+  help="Produces a log file recording progress of analysis")
+
 cmd_args = parser.parse_args()
+
+if cmd_args.debug_flag:
+	print("Modules loaded, arguments processed",flush=True)
 
 #### Development Code Snippets ############
 #nx.connected_component_subgraphs(G) Can be used to get a list of subgraphs in graph.
@@ -69,6 +75,18 @@ AA_poss = 20
 ##################################
 input_name = cmd_args.in_filename.split(".")[0]
 
+if cmd_args.randomize_flag:
+	output_id=input_name+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))+"_rand"
+else:
+	output_id=input_name+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))+"_real"
+
+
+error_log = sys.stderr
+if cmd_args.debug_flag:
+	error_log = open(output_id+".log","w")
+
+print("Output Name: "+output_id,file=error_log,flush=True)
+
 def replace_Xs(peptide,replace_flag):
 	front_list = [i for i, ltr in enumerate(peptide) if ltr == 'x' and i < len(peptide)/2]
 	back_list = [i for i, ltr in enumerate(peptide) if ltr == 'x' and i > len(peptide)/2]
@@ -79,64 +97,55 @@ def replace_Xs(peptide,replace_flag):
 		return [peptide[:len(front_list)], "".join(curr_str), peptide[(len(peptide)-len(back_list)):]]
 
 def load_sequences(curr_filename):
-	total_kmers = 0
-	in_handle = open(curr_filename, 'r')
-	master_dict = {}
-	if cmd_args.is_fastq: #if is_fastq
-		raise ValueError("Currently missing fastq module")	
-		for line in in_handle:
-			if line_count%4 == 1:
-				curr_seq = line.rstrip().lower()
-				f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
-				if cmd_args.randomize_flag:
-					mid_str = ''.join(random.sample(mid_str, len(mid_str)))
-				curr_seq = f_str+mid_str+l_str
-				curr_seq = curr_seq.lower()
-				pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
-				for coord in pos_zip:
-					reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
-					master_dict[curr_seq[coord[0]:coord[1]]] = master_dict.get(curr_seq[coord[0]:coord[1]], 0) + 1/(AA_poss**reduc_denom)
-					total_kmers += 1/(AA_poss**reduc_denom)
-		in_handle.close()
-		
-	else: #is_fasta
-		curr_seq = ""
-		for line in in_handle:
-			if line[0] == ">":
-				if curr_seq != "":
-					f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
-					if cmd_args.randomize_flag:
-						mid_str = ''.join(random.sample(mid_str, len(mid_str)))
-					curr_seq = f_str+mid_str+l_str
-					curr_seq = curr_seq.lower()
-					pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
-					for coord in pos_zip:
-						reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
-						sav_kmer = curr_seq[coord[0]:coord[1]]
-						if "_" in sav_kmer:
-							print(line, file=sys.stderr)
-							print(curr_seq, file=sys.stderr)
-							raise ValueError()
-						master_dict[sav_kmer] = master_dict.get(sav_kmer, 0) + 1/(AA_poss**reduc_denom)
-						total_kmers += 1/(AA_poss**reduc_denom)
-			else:
-				curr_seq = curr_seq + line.rstrip().lower()
-		curr_seq = line.rstrip().lower()
+	def process_seq(curr_seq, m_dict):
+		part_kmer =0
 		f_str, mid_str, l_str = replace_Xs(curr_seq, cmd_args.replace_flag)
 		if cmd_args.randomize_flag:
 			mid_str = ''.join(random.sample(mid_str, len(mid_str)))
 		curr_seq = f_str+mid_str+l_str
 		curr_seq = curr_seq.lower()
 		pos_zip = zip(range(0,len(curr_seq)-cmd_args.kmer_size+1), range(cmd_args.kmer_size, len(curr_seq)+1))
+		#print((curr_seq, f_str,mid_str,l_str), flush=True)
+		zip_len = 0
 		for coord in pos_zip:
+			zip_len += 1
+			#print(coord)
 			reduc_denom = max(len(f_str)-coord[0],0) - max(len(f_str)-coord[1],0) - max(coord[0]- (len(curr_seq)-len(l_str)),0) + max(coord[1]- (len(curr_seq)-len(l_str)),0)
 			sav_kmer = curr_seq[coord[0]:coord[1]]
 			if "_" in sav_kmer:
-				print(line, file=sys.stderr)
-				print(curr_seq, file=sys.stderr)
+				print(line, file=error_log)
+				print(curr_seq, file=error_log)
 				raise ValueError()
-			master_dict[sav_kmer] = master_dict.get(sav_kmer, 0) + 1/(AA_poss**reduc_denom)
-			total_kmers += 1/(AA_poss**reduc_denom)
+			m_dict[sav_kmer] += 1/(AA_poss**reduc_denom)
+			part_kmer += 1/(AA_poss**reduc_denom)
+			#print(part_kmer,flush=True)
+		#print(zip_len, flush=True)
+		return(part_kmer)
+
+	total_kmers = 0
+	in_handle = open(curr_filename, 'r')
+	master_dict = Counter()
+	cycle_count=0
+	if cmd_args.is_fastq: #if is_fastq
+		raise ValueError("Currently missing fastq module")	
+		for line in in_handle:
+			if line_count%4 == 1:
+				curr_seq = line.rstrip().lower()
+				total_kmers += process_seq(curr_seq, master_dict)
+		in_handle.close()
+		
+	else: #is_fasta
+		curr_seq = ""
+		for line in in_handle:
+			if line[0] == ">":
+				if cycle_count%10000 == 0:
+					print(str(cycle_count)+" "+str(total_kmers),file=error_log,flush=True)
+				cycle_count += 1 
+				total_kmers += process_seq(curr_seq, master_dict)
+				curr_seq =""
+			else:
+				curr_seq = curr_seq + line.rstrip().lower()
+		total_kmers += process_seq(curr_seq, master_dict)
 		in_handle.close()
 	return((master_dict, total_kmers))
 
@@ -157,13 +166,11 @@ def plot_network(t_graph, filename_detail, fig_x=16,fig_y=22):
 	plt.savefig("".join(["network",filename_detail])+".png",format="png")
 
 
-if cmd_args.randomize_flag:
-	output_id=input_name+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))+"_rand"
-else:
-	output_id=input_name+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))+"_real"
-print("Output Name: "+output_id)
+#logfile = open(input_name+".log","w")
+if cmd_args.debug_flag:
+	print("Functions Loaded",flush=True)
 
-master_dict = {}
+
 m_graph = nx.Graph()
 
 #Define Distance Matrix for comparing strings.
@@ -188,7 +195,7 @@ plt.savefig("kmer_frequency_histo"+output_id+".png",format="png")
 #If background is defined load the data, check enrichment levels
 #Remove all nodes that have an enrichment lower than allowable enrichment.
 if cmd_args.in_background != "":
-	print("Input path resolved to:", os.path.abspath(cmd_args.in_background))
+	print("Input path resolved to:", os.path.abspath(cmd_args.in_background),file=error_log)
 	background_dict, total_back = load_sequences(os.path.abspath(cmd_args.in_background))
 
 	back_set = [(i,{'weight':j}) for i,j in background_dict.items()]
@@ -244,8 +251,8 @@ for i in m_graph.nodes_iter():
 			else:
 				edge_weight = pd.compare_peptides_sp(i,j)
 		except KeyError:
-			print(str(i)+" "+str(j), file=sys.stderr)
-			print(list(m_graph.nodes_iter()), file=sys.stderr)
+			print(str(i)+" "+str(j), file=error_log)
+			print(list(m_graph.nodes_iter()), file=error_log)
 			raise
 		#edge_weight = (sum((score_mat[i[c].upper(),j[c].upper()] for c in range(cmd_args.kmer_size)))-min_score)/(max_score-min_score) #Old edge weight code, now in external module
 		if edge_weight >= cmd_args.min_edge:
@@ -253,7 +260,7 @@ for i in m_graph.nodes_iter():
 		
 	past_set.append(i)
 	if len(past_set) % 1000 == 0:
-		print(len(past_set))
+		print(len(past_set),file=error_log)
 
 #If a background is defined, print out the nodes that meet the enrichment criteria but are being cut due to degree.
 del_out = open("kmer_deleted"+input_name+"_"+output_id+".txt", 'w')
@@ -261,7 +268,7 @@ node_weight = nx.get_node_attributes(m_graph, 'weight')
 if cmd_args.in_background != "":
 	for n,d in m_graph.degree_iter():
 		if d < cmd_args.min_degree:
-			for i in range(node_weight[n]):
+			for i in range(math.ceil(node_weight[n])):
 				print(n,file=del_out)
 
 #Delete nodes failing degree criteria
@@ -273,7 +280,7 @@ plot_network(m_graph, output_id)
 #Output Kmers that pass all criteria, replicated for the number of times they occur (WebLogo input)
 kmer_out = open("kmer_output"+input_name+"_"+output_id+".txt", 'w')
 for n,ndata in m_graph.nodes(data=True):
-	for i in range(ndata['weight']):
+	for i in range(math.ceil(ndata['weight'])):
 		print(n,file=kmer_out)
 kmer_out.close()
 
