@@ -4,6 +4,9 @@ import itertools
 from collections import Counter 
 from operator import itemgetter
 import copy
+import pickle
+import errno
+from subprocess import call
 
 #For testing
 #import sys
@@ -21,15 +24,13 @@ def read_kmer_out_to_dict(filename):
 	return(out_dict)
 		
 		
-	
-
 class Clustering:
 	def __init__(self, kmer_dict,scoring_class):
 		self.kmers = kmer_dict
 		self.score = scoring_class
 		self._full_PWM = self._build_hiercluster()
 	def _build_hiercluster(self):
-		item_list = [PWM(i,self.score,j) for i,j in self.kmers.items()] # Convert kmer input into a list of individual PWMs
+		item_list = [PWM(i,self.score,j,history=True) for i,j in self.kmers.items()] # Convert kmer input into a list of individual PWMs
 		pair_iter =itertools.combinations(item_list,2) 
 		score_list = [(i,j,i*j) for i,j in pair_iter]
 		while len(item_list) > 1:
@@ -44,32 +45,90 @@ class Clustering:
 		
 	def get_pwm(self):
 		return(self._full_PWM)
-		
+	
 	def write_alignment(self,out_file):
-		out_handle = open(out_file, 'w')
-		PWM_elem = (t.elements() for t in self._full_PWM._curr_PWM)
-		PWM_elem = ("".join(z) for z in zip(*PWM_elem))
-		for line in PWM_elem:
-			print(line, file=out_handle)
+		self.get_pwm().write_alignment(out_file)
+	
+	def write_history(self,out_file):
+		pickle.dump(self._full_PWM._hist_list, open(out_file, 'wb'))
+	
+	def write_verbose_dirs(self,out_dir):
+		if not self._full_PWM._history:
+			raise TypeError("Clustering.write_verbose requires that the underlying PWM retained history in order to produce meaningful results")
+		hist_list = self._full_PWM._hist_list
+		def try_makedir(mk_loc):
+			try:
+				os.makedirs(mk_loc)
+			except OSError as e:
+				if e.errno != errno.EEXIST:
+					raise
+		try_makedir(out_dir)
+		try_makedir(out_dir+"/align_root")
+		def outer_rec(br,base_dir):
+			if type(br) == list and len(br) == 3:
+				try_makedir(base_dir+"/0")
+				try_makedir(base_dir+"/1")
+				curr_join = outer_rec(br[0],base_dir+"/0") + outer_rec(br[1],base_dir+"/1")
+				curr_join.write_logo(base_dir+"/partial_logo")
+				return(curr_join)
+			else:
+				br.write_logo(base_dir+"/partial_logo")
+				return(br)		
+		outer_rec(hist_list,out_dir+"/align_root")
+	
+	def write_verbose_flat(self,out_dir):
+		if not self._full_PWM._history:
+			raise TypeError("Clustering.write_verbose requires that the underlying PWM retained history in order to produce meaningful results")
+		hist_list = self._full_PWM._hist_list
+		def try_makedir(mk_loc):
+			try:
+				os.makedirs(mk_loc)
+			except OSError as e:
+				if e.errno != errno.EEXIST:
+					raise
+		try_makedir(out_dir)
+		def outer_rec(br,base_dir):
+			if type(br) == list and len(br) == 3:
+				curr_join = outer_rec(br[0],base_dir+"_0") + outer_rec(br[1],base_dir+"_1")
+				curr_join.write_logo(base_dir)
+				return(curr_join)
+			else:
+				br.write_logo(base_dir)
+				return(br)		
+		outer_rec(hist_list,out_dir+"/logo_out")
 		
-		
+
 			
-		
-		
 class PWM:
-	def __init__(self,in_str,score_obj,rep=1):
+	def __init__(self,in_str,score_obj,rep=1,history=False):
 		self._curr_PWM = [Counter({char:rep}) for char in in_str.upper()]
 		self.score_obj = score_obj
 		self._depth = rep
+		self._history = history
+		self._hist_list = self
 	
 	def __copy__(self):
 		new_pwm = PWM('',self.score_obj)
 		new_pwm._depth = self._depth
 		new_pwm._curr_PWM = copy.deepcopy(self._curr_PWM)
+		new_pwm._history = self._history
+		new_pwm._hist_list = self._hist_list
 		return(new_pwm)	
 	
 	def length(self):
 		return len(self._curr_PWM)
+	
+	def write_alignment(self,out_file):
+			out_handle = open(out_file, 'w')
+			PWM_elem = (t.elements() for t in self._curr_PWM)
+			PWM_elem = ("".join(z) for z in zip(*PWM_elem))
+			for line in PWM_elem:
+				print(line, file=out_handle)
+			
+	def write_logo(self, out_file_root, weblogo_exec='/panfs/roc/groups/2/support/jballer/Seelig/WebLogo/weblogo/weblogo'):
+		self.write_alignment(out_file_root+".txt")
+		call([weblogo_exec, '-Fpdf', '-slarge', '-Aprotein'],stdin=open(out_file_root+".txt"),stdout=open(out_file_root+".pdf",'w'))
+		
 	
 	def _compare_PWM_sp(self, pwm1, pwm2, phase=0):
 		idx1 = list(range(0,len(pwm1)))
@@ -144,6 +203,10 @@ class PWM:
 				else:
 					out_PWM._curr_PWM[pos] = self._curr_PWM[idxs[0]] + other._curr_PWM[idxs[1]]
 			out_PWM._depth = self._depth+ other._depth
+			if out_PWM._history:
+				out_PWM._hist_list = [self._hist_list, other._hist_list, self*other]
+			else:
+				out_PWM._hist_list = out_PWM
 			return(out_PWM)
 		else:
 			raise TypeError('Addition of PWMs is only defined for Strings and PWMs')
@@ -171,7 +234,7 @@ class scoring_distance(object):
 	def __getitem__(self, pair):
 		"""Returns the score of the given pair of AA."""
 		if self.per_pos_norm==True:
-			if self.debug:
+			if self._debug:
 				print(pair[0])
 				print(pair[1])
 			try:
@@ -213,8 +276,8 @@ class scoring_distance(object):
 			print("Key Error occured while attempting to compute Single Phase edge weight.", file=sys.stderr)
 			print("Peptides being analyzed on error are: "+str(pep1)+" "+str(pep2), file=sys.stderr)
 			raise
-		if self.debug: print(pep1.upper(), pep2.upper(), n_iter)
-		if self.debug: print(edge_weight)
+		if self._debug: print(pep1.upper(), pep2.upper(), n_iter)
+		if self._debug: print(edge_weight)
 		return(edge_weight)
 	
 	def compare_peptides_mp(self,pep1, pep2):
