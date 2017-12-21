@@ -65,7 +65,7 @@ class Clustering:
 		try_makedir(out_dir)
 		try_makedir(out_dir+"/align_root")
 		def outer_rec(br,base_dir):
-			if type(br) == list and len(br) == 3:
+			if type(br) == list and len(br) == 4:
 				try_makedir(base_dir+"/0")
 				try_makedir(base_dir+"/1")
 				curr_join = outer_rec(br[0],base_dir+"/0") + outer_rec(br[1],base_dir+"/1")
@@ -76,7 +76,7 @@ class Clustering:
 				return(br)		
 		outer_rec(hist_list,out_dir+"/align_root")
 	
-	def write_verbose_flat(self,out_dir):
+	def write_verbose_flat(self,out_dir,leaves=False):
 		if not self._full_PWM._history:
 			raise TypeError("Clustering.write_verbose requires that the underlying PWM retained history in order to produce meaningful results")
 		hist_list = self._full_PWM._hist_list
@@ -87,13 +87,14 @@ class Clustering:
 				if e.errno != errno.EEXIST:
 					raise
 		try_makedir(out_dir)
-		def outer_rec(br,base_dir):
-			if type(br) == list and len(br) == 3:
-				curr_join = outer_rec(br[0],base_dir+"_0") + outer_rec(br[1],base_dir+"_1")
-				curr_join.write_logo(base_dir)
+		def outer_rec(br,base_dir,idx=0):
+			if type(br) == list and len(br) == 4:
+				curr_join = outer_rec(br[0],base_dir+"_0",idx+br[3])+outer_rec(br[1],base_dir+"_1",idx+br[3])
+				curr_join.write_logo(base_dir+"_"+str(br[2]))
 				return(curr_join)
 			else:
-				br.write_logo(base_dir)
+				if leaves:
+					br.write_logo(base_dir+"_"+str(br[2]))
 				return(br)		
 		outer_rec(hist_list,out_dir+"/logo_out")
 		
@@ -119,12 +120,36 @@ class PWM:
 		return len(self._curr_PWM)
 	
 	def write_alignment(self,out_file):
+		if self._history:
+			out_handle = open(out_file, 'w')
+			def outer_rec(br,offset=0):
+				if isinstance(br, PWM):
+					PWM_elem1 = (t.elements() for t in br._curr_PWM)
+					PWM_elem1 = ("".join(z) for z in zip(*PWM_elem1))
+					if offset > 0:
+						prefix = '-'*offset
+						PWM_elem1 = (prefix+s for s in PWM_elem1)
+					if br.length() + offset < self.length():
+						suffix = '-'*(self.length() - br.length() - offset)
+						PWM_elem1 = (s+suffix for s in PWM_elem1)
+					for line in PWM_elem1:
+						print(line, file=out_handle)
+				else:
+					if br[3] >= 0:
+						outer_rec(br[0],offset+br[3])
+						outer_rec(br[1],offset)
+					else:
+						outer_rec(br[0],offset)
+						outer_rec(br[1],offset+abs(br[3]))
+			outer_rec(self._hist_list)
+			out_handle.close()
+		else:
 			out_handle = open(out_file, 'w')
 			PWM_elem = (t.elements() for t in self._curr_PWM)
 			PWM_elem = ("".join(z) for z in zip(*PWM_elem))
 			for line in PWM_elem:
 				print(line, file=out_handle)
-			
+				
 	def write_logo(self, out_file_root, weblogo_exec='/panfs/roc/groups/2/support/jballer/Seelig/WebLogo/weblogo/weblogo'):
 		self.write_alignment(out_file_root+".txt")
 		call([weblogo_exec, '-Fpdf', '-slarge', '-Aprotein'],stdin=open(out_file_root+".txt"),stdout=open(out_file_root+".pdf",'w'))
@@ -169,16 +194,21 @@ class PWM:
 		return((res_max[0],res_max[1]))
 		
 	def __mul__(self, other):
+		return(self._score_and_align(other)[0])
+
+	def _score_and_align(self,other):
 		if type(other) == str:
 			return(self*PWM(other, self.score_obj))
 		elif type(other) == PWM:
 			if self.score_obj != other.score_obj:
 				raise TypeError('Scoring of PWMs is only defined for PWMs using the same scoring object')
 			m_score, m_idxs = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
-			return(m_score)
+			m_idx = len(list(itertools.takewhile(lambda x: x==-1, m_idxs[0])))-len(list(itertools.takewhile(lambda x: x==-1, m_idxs[1])))
+			return([m_score,m_idx])
 		else:
 			print((self,other))
 			raise TypeError('Scoring of PWMs is only defined for Strings and PWMs')
+		
 			
 	def __rmul__(self, other):
 		return(self.__mul__(other))
@@ -204,7 +234,7 @@ class PWM:
 					out_PWM._curr_PWM[pos] = self._curr_PWM[idxs[0]] + other._curr_PWM[idxs[1]]
 			out_PWM._depth = self._depth+ other._depth
 			if out_PWM._history:
-				out_PWM._hist_list = [self._hist_list, other._hist_list, self*other]
+				out_PWM._hist_list = [self._hist_list, other._hist_list] + self._score_and_align(other)
 			else:
 				out_PWM._hist_list = out_PWM
 			return(out_PWM)
