@@ -245,18 +245,55 @@ class PWM:
 		
 import sys;
    
+group_scoring_v1={'groups':[['R','H','K'],['D','E'],['S','T','C','N','Q'], ['G','A','V','I','L','M'],['F'],['Y'],['W'],['P']], 'AA_X':-1,'AA_hyphen':-2,'X_X':0,'hyphen_hyphen':-1,'AA_match':2,'AA_within_grp':1, 'AA_between_grp':-2, 'hyphen_X':-1}
+even_scoring={'groups':[['R'],['H'],['K'],['D'],['E'],['S'],['T'],['C'],['N'],['Q'], ['G'],['A'],['V'],['I'],['L'],['M'],['P'],['F'],['Y'],['W']], 'AA_X':-1,'AA_hyphen':-2,'X_X':0,'hyphen_hyphen':-1,'AA_match':2,'AA_within_grp':1, 'AA_between_grp':-2, 'hypen_X':-1}
+
 class scoring_distance(object):
 	"""The PAM250 scoring matrix class."""
-	def __init__(self, normalize = False, debug=False):
+	def __init__(self, normalize = False, debug=False, matrix_name='PAM250wX.txt',  matrix_dict=None ):
 		"""Initialize the scoring matrix."""
-		with open(os.path.join(os.path.dirname(__file__), 'PAM250wX.txt')) as input_data:
-			items = [line.strip().split() for line in input_data.readlines()]
+		"""Scoring matrices should include all amino acids as well as 'X' and '-'. 'X' is used for network alignment, '-' is used for motif alignment and hierarchical clustering """
+		if matrix_dict is None:	
+			with open(os.path.join(os.path.dirname(__file__), matrix_name)) as input_data:
+				items = [line.strip().split() for line in input_data.readlines()]
+				self.scoring_matrix = {}
+				for item in items:
+					if item[0] in self.scoring_matrix:
+						self.scoring_matrix[item[0]][item[1]] = int(item[2])
+					else:
+						self.scoring_matrix[item[0]] = {item[1]:int(item[2])}
+		else:
 			self.scoring_matrix = {}
-			for item in items:
-				if item[0] in self.scoring_matrix:
-					self.scoring_matrix[item[0]][item[1]] = int(item[2])
-				else:
-					self.scoring_matrix[item[0]] = {item[1]:int(item[2])}
+			matrix_dict['groups'].extend([['-'],['X']])
+			for i in matrix_dict['groups']:
+				for j in matrix_dict['groups']:
+					for ij in itertools.product(i,j):
+						if i == j: # if amino acid group matches
+							if ij[0] == ij[1]: #If actual amino acid matches
+								if ij[0] == '-':
+									curr_score = matrix_dict['hyphen_hyphen']
+								elif ij[0] == 'X':
+									curr_score = matrix_dict['X_X']
+								else:
+									curr_score = matrix_dict['AA_match']
+							else: #if amino acid group matches, but not the same amino acid
+								curr_score = matrix_dict['AA_within_grp']
+						else: #if in different amino acid groups
+							if ij[0] == '-' or ij[1] == '-': #if compared to hyphen
+								if ij[0] == 'X' or ij[1] == 'X': #Unless you happen to be an 'X'
+									curr_score = matrix_dict['hyphen_X']
+								else:
+									curr_score = matrix_dict['AA_hyphen']
+							elif ij[0] == 'X' or ij[1] == 'X': #If compared to X (compared to hyphen coverd in previous case)
+								curr_score = matrix_dict['AA_X']
+							else: #All between group AAs handled here
+								curr_score = matrix_dict['AA_between_grp']
+						if ij[0] in self.scoring_matrix:
+							self.scoring_matrix[ij[0]][ij[1]] = curr_score
+						else:
+							self.scoring_matrix[ij[0]] = {ij[1]:curr_score}
+							
+							
 		self.max_score = max(max(self.scoring_matrix.values(), key=lambda v: max(v.values())).values())
 		self.min_score = min(min(self.scoring_matrix.values(), key=lambda v: min(v.values())).values())
 		self.per_pos_norm = normalize
