@@ -31,7 +31,7 @@ class Clustering:
 		self._full_PWM = self._build_hiercluster()
 	def _build_hiercluster(self):
 		item_list = [PWM(i,self.score,j,history=True) for i,j in self.kmers.items()] # Convert kmer input into a list of individual PWMs
-		pair_iter =itertools.combinations(item_list,2) 
+		pair_iter =itertools.combinations(item_list,2) # Generate all of the combinations of Kmer comparisions
 		score_list = [(i,j,i*j) for i,j in pair_iter]
 		while len(item_list) > 1:
 			print(len(item_list))
@@ -90,23 +90,59 @@ class Clustering:
 		def outer_rec(br,base_dir,idx=0):
 			if type(br) == list and len(br) == 4:
 				curr_join = outer_rec(br[0],base_dir+"_0",idx+br[3])+outer_rec(br[1],base_dir+"_1",idx+br[3])
-				curr_join.write_logo(base_dir+"_"+str(br[2]))
+				curr_join.write_logo(base_dir+"_")
 				return(curr_join)
 			else:
 				if leaves:
-					br.write_logo(base_dir+"_"+str(br[2]))
+					br.write_logo(base_dir+"_")
 				return(br)		
 		outer_rec(hist_list,out_dir+"/logo_out")
 		
+class Empirical_Error:
+	def __init__(self):
+		self._uniqueAA=20
+		ent_handle = open("/home/support/jballer/Seelig/Entropy_calc.txt", 'r')
+		self.entropy_dict = {}
+		for line in ent_handle:
+			samp_size,samp_ent = line.split(" ")
+			self.entropy_dict[int(samp_size)] = float(samp_ent)
+	
+	def get_error(self, N):
+		if N <= 100:
+				E = self.entropy_dict[N]
+				return(E)
+		else:
+			Hg = -1*math.log2(1/self._uniqueAA) #Assumes equal occurance of the 20 AAs, otherwise Sum p*log2(p) over each aminoacid (p is proportion)
+			AE = Hg - (self._uniqueAA - 1)/(2*math.log(2)*N)
+			return(AE)
 
-			
+	
 class PWM:
+	err_obj = Empirical_Error()
 	def __init__(self,in_str,score_obj,rep=1,history=False):
-		self._curr_PWM = [Counter({char:rep}) for char in in_str.upper()]
+		if len(in_str) > 0:
+			self._curr_PWM = [Counter({char:rep}) for char in in_str.upper()] # Getting null strings, need to investigate
+			self._calc_entropy()
+		else:
+			self._entropy=0
 		self.score_obj = score_obj
 		self._depth = rep
 		self._history = history
 		self._hist_list = self
+	
+		
+	def _calc_entropy(self):
+		accum = 0
+		for c in self._curr_PWM:
+			total_samples = sum((aa[1] for aa in c.items() if aa[0] not in ('-','X')))
+			accum = accum + self.__class__.err_obj.get_error(total_samples) + sum(((aa[1]/total_samples)*math.log2(aa[1]/total_samples) for aa in c.items() if aa[0] not in ('-','X')))
+		if len(self._curr_PWM) == 0:
+			print('NULL')
+			self._entropy = 0
+		else:
+			self._entropy = accum/len(self._curr_PWM)
+				
+			
 	
 	def __copy__(self):
 		new_pwm = PWM('',self.score_obj)
@@ -114,6 +150,7 @@ class PWM:
 		new_pwm._curr_PWM = copy.deepcopy(self._curr_PWM)
 		new_pwm._history = self._history
 		new_pwm._hist_list = self._hist_list
+		new_pwm._calc_entropy()
 		return(new_pwm)	
 	
 	def length(self):
@@ -151,8 +188,9 @@ class PWM:
 				print(line, file=out_handle)
 				
 	def write_logo(self, out_file_root, weblogo_exec='/panfs/roc/groups/2/support/jballer/Seelig/WebLogo/weblogo/weblogo'):
-		self.write_alignment(out_file_root+".txt")
-		call([weblogo_exec, '-Fpdf', '-slarge', '-Aprotein'],stdin=open(out_file_root+".txt"),stdout=open(out_file_root+".pdf",'w'))
+		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))
+		self.write_alignment(l_filepath+".txt")
+		call([weblogo_exec, '-Feps', '-slarge', '-Aprotein'],stdin=open(l_filepath+".txt"),stdout=open(l_filepath+".eps",'w'))
 		
 	
 	def _compare_PWM_sp(self, pwm1, pwm2, phase=0):
@@ -237,6 +275,7 @@ class PWM:
 				out_PWM._hist_list = [self._hist_list, other._hist_list] + self._score_and_align(other)
 			else:
 				out_PWM._hist_list = out_PWM
+			out_PWM._calc_entropy()
 			return(out_PWM)
 		else:
 			raise TypeError('Addition of PWMs is only defined for Strings and PWMs')
@@ -246,7 +285,9 @@ class PWM:
 import sys;
    
 group_scoring_v1={'groups':[['R','H','K'],['D','E'],['S','T','C','N','Q'], ['G','A','V','I','L','M'],['F'],['Y'],['W'],['P']], 'AA_X':-1,'AA_hyphen':-2,'X_X':0,'hyphen_hyphen':-1,'AA_match':2,'AA_within_grp':1, 'AA_between_grp':-2, 'hyphen_X':-1}
-even_scoring={'groups':[['R'],['H'],['K'],['D'],['E'],['S'],['T'],['C'],['N'],['Q'], ['G'],['A'],['V'],['I'],['L'],['M'],['P'],['F'],['Y'],['W']], 'AA_X':-1,'AA_hyphen':-2,'X_X':0,'hyphen_hyphen':-1,'AA_match':2,'AA_within_grp':1, 'AA_between_grp':-2, 'hypen_X':-1}
+group_scoring_v2={'groups':[['R','H','K'],['D','E'],['S','T','C','N','Q'], ['G','A','V','I','L','M'],['F','Y','W'],['P']], 'AA_X':-1,'AA_hyphen':-2,'X_X':0,'hyphen_hyphen':-1,'AA_match':2,'AA_within_grp':1, 'AA_between_grp':-2, 'hyphen_X':-1}
+even_scoring={'groups':[['R'],['H'],['K'],['D'],['E'],['S'],['T'],['C'],['N'],['Q'], ['G'],['A'],['V'],['I'],['L'],['M'],['P'],['F'],['Y'],['W']], 'AA_X':-1,'AA_hyphen':-2,'X_X':0,'hyphen_hyphen':-1,'AA_match':2,'AA_within_grp':1, 'AA_between_grp':-2, 'hyphen_X':-1}
+
 
 class scoring_distance(object):
 	"""The PAM250 scoring matrix class."""
@@ -263,6 +304,7 @@ class scoring_distance(object):
 					else:
 						self.scoring_matrix[item[0]] = {item[1]:int(item[2])}
 		else:
+			print("Loading Alternative Matrix")
 			self.scoring_matrix = {}
 			matrix_dict['groups'].extend([['-'],['X']])
 			for i in matrix_dict['groups']:
@@ -292,12 +334,13 @@ class scoring_distance(object):
 							self.scoring_matrix[ij[0]][ij[1]] = curr_score
 						else:
 							self.scoring_matrix[ij[0]] = {ij[1]:curr_score}
-							
+			#print(self.scoring_matrix)					
 							
 		self.max_score = max(max(self.scoring_matrix.values(), key=lambda v: max(v.values())).values())
 		self.min_score = min(min(self.scoring_matrix.values(), key=lambda v: min(v.values())).values())
 		self.per_pos_norm = normalize
 		self._debug=debug
+		
 	def __getitem__(self, pair):
 		"""Returns the score of the given pair of AA."""
 		if self.per_pos_norm==True:

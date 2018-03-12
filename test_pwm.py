@@ -2,59 +2,31 @@ import sys
 sys.path.insert(0, "/Users/Joshua Baller/Documents/Seelig/protease-sites/")
 import compare_peptides as cp
 from subprocess import call
+import argparse
 
-sd = cp.scoring_distance(normalize=False,matrix_dict=cp.group_scoring_v1)
+parser = argparse.ArgumentParser(description=\
+  'This program accepts fasta or fastq files and analyzes kmer distribution of a fixed size')
 
-pwm1 = cp.PWM('ACDR',sd)
-(pwm1+pwm1)._curr_PWM
+parser.add_argument(dest="in_kmers",\
+  help="specifies the input file (kmer_output)")
+parser.add_argument('-s', action="store", dest="score_mat", type=str, default="", required=False, choices=['even','group1','group2'],\
+  help="Choose between 'even', 'group1', 'group2'. Group1 and Group2 are two seperate divisions of the aminoacids (Group2 groups aromatics)") 
+parser.add_argument('-r','--root',action="store",dest="root_path",default=False ,required=False,\
+  help="root name for output")
+cmd_args = parser.parse_args()
 
-pwm2 = cp.PWM('CDRA',sd)
-(pwm1+pwm2)._curr_PWM
-(pwm1+pwm2+pwm2)._curr_PWM
+if cmd_args.score_mat == 'even':
+	sd = cp.scoring_distance(normalize=False,matrix_dict=cp.even_scoring)
+if cmd_args.score_mat == 'group1':
+	sd = cp.scoring_distance(normalize=False,matrix_dict=cp.group_scoring_v1)
+if cmd_args.score_mat == 'group2':
+	sd = cp.scoring_distance(normalize=False,matrix_dict=cp.group_scoring_v2)
 
-pwm3 = cp.PWM('TTAC',sd,rep=5)
-(pwm1+pwm2+pwm2+pwm3)._curr_PWM
 
-clust = cp.Clustering({'ACDR':3,'CDRA':5,'TTAC':4, 'TTTC':2, 'PQDR':1},sd)
-clust.write_history('/home/support/jballer/Seelig/test.pickle')
-print(clust._full_PWM._curr_PWM)
-clust.write_verbose_flat('/home/support/jballer/Seelig/test_tree2/')
-del clust
-
-kmer_dict = cp.read_kmer_out_to_dict('/home/support/jballer/Seelig/kmer_outputADAM171R1_ADAM171R1_6kmer_size0.65min_edge10min_node4min_degree8.0fold_enrichment1295751_real.txt')
+kmer_dict = cp.read_kmer_out_to_dict(cmd_args.in_kmers)
 clust = cp.Clustering(kmer_dict,sd)
-clust.write_history('/home/support/jballer/Seelig/ADAM171.pickle')
-clust.write_verbose_flat('/home/support/jballer/Seelig/ADAM171_tree2/')
+#clust.write_history(cmd_args.root_path+"_"+cmd_args.score_mat+".pickle")
+clust.write_verbose_flat(cmd_args.root_path+"_"+cmd_args.score_mat+"_tree/")
 del clust
 
-kmer_dict = cp.read_kmer_out_to_dict('/home/support/jballer/Seelig/kmer_outputFxa400R1_Fxa400R1_6kmer_size0.65min_edge10min_node4min_degree5.0fold_enrichment7851219_real.txt')
-clust = cp.Clustering(kmer_dict,sd)
-clust.write_history('/home/support/jballer/Seelig/Fxa400.pickle')
-clust.write_verbose_flat('/home/support/jballer/Seelig/Fxa400_tree/')
-del clust
-
-kmer_dict = cp.read_kmer_out_to_dict('/home/support/jballer/Seelig/kmer_outputSpeB1R1_SpeB1R1_6kmer_size0.65min_edge10min_node4min_degree10.0fold_enrichment3265074_real.txt')
-clust = cp.Clustering(kmer_dict,sd)
-clust.write_history('/home/support/jballer/Seelig/SpeB1.pickle')
-clust.write_verbose_flat('/home/support/jballer/Seelig/SpeB1_tree/')
-del clust
-
-#kmer_dict = cp.read_kmer_out_to_dict('/home/support/jballer/Seelig/kmer_outputFxa400R1_Fxa400R1_6kmer_size0.65min_edge10min_node4min_degree5.0fold_enrichment7851219_real.txt')
-#clust = cp.Clustering(kmer_dict,sd)
-#clust.write_alignment('/home/support/jballer/Seelig/test_logo_Fxa400_dat.txt')
-#call(['./WebLogo/weblogo/weblogo', '-Fpdf', '-slarge', '-Aprotein'],stdin=open('test_logo_Fxa400_dat.txt'),stdout=open('Fxa400_logo.pdf','w'))
-#del clust
-
-#kmer_dict = cp.read_kmer_out_to_dict('/home/support/jballer/Seelig/kmer_outputSpeB1R1_SpeB1R1_6kmer_size0.65min_edge10min_node4min_degree10.0fold_enrichment3265074_real.txt')
-#clust = cp.Clustering(kmer_dict,sd)
-#clust.write_alignment('/home/support/jballer/Seelig/test_logo_SpeB1_dat.txt')
-#call(['./WebLogo/weblogo/weblogo', '-Fpdf', '-slarge', '-Aprotein'],stdin=open('test_logo_SpeB1_dat.txt'),stdout=open('SpeB1_logo.pdf','w'))
-#del clust
-
-#kmer_dict = cp.read_kmer_out_to_dict('/home/support/jballer/Seelig/kmer_outputSpeB400R1_SpeB400R1_6kmer_size0.65min_edge10min_node4min_degree6.0fold_enrichment8762309_real.txt')
-#clust = cp.Clustering(kmer_dict,sd)
-#clust.write_alignment('/home/support/jballer/Seelig/test_logo_SpeB400_dat.txt')
-#call(['./WebLogo/weblogo/weblogo', '-Fpdf', '-slarge', '-Aprotein'],stdin=open('test_logo_SpeB400_dat.txt'),stdout=open('SpeB400_logo.pdf','w'))
-
-#del clust
 

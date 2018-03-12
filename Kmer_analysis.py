@@ -44,7 +44,8 @@ parser.add_argument('-a', '--align',action="store_true",dest="align_flag",defaul
   help="Return maximum score obtainable by sliding kmers relative to each other rather than assuming they are already aligned. Edges are padded with Xs")
 parser.add_argument('--debug',action="store_true",dest="debug_flag",default=False, \
   help="Produces a log file recording progress of analysis")
-
+parser.add_argument('-p','--predef-matrix',action="store",dest="score_mat",default=None, \
+  help="Loads an alternate scoring matrix. PAM250 is default. Built in alternates include 'group1' 'group2' and 'even'")
 cmd_args = parser.parse_args()
 
 if cmd_args.debug_flag:
@@ -73,13 +74,29 @@ if cmd_args.debug_flag:
 # rescaling is then, for score S, edge_weight =(S-min_score)/(max_score-min_score), making a score of 1 == perfect and a score of 0 equal to worst possible.
 AA_poss = 20
 ##################################
+
 input_name = cmd_args.in_filename.split(".")[0]
 
-if cmd_args.randomize_flag:
-	output_id=input_name+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))+"_rand"
+## Construct output file name string. If a background is defined include that as the 'vs' item. 
+if cmd_args.in_background == "":
+	output_id=input_name+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))
 else:
-	output_id=input_name+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))+"_real"
+	output_id=input_name+"_vs_"+cmd_args.in_background.split(".")[0]+"_"+str(cmd_args.kmer_size)+"kmer_size"+str(cmd_args.min_edge)+"min_edge"+str(cmd_args.min_node)+"min_node"+str(cmd_args.min_degree)+"min_degree"+str(cmd_args.min_enrichment)+"fold_enrichment"+str(random.randint(0, 10000000))
 
+#Append a tag indicating whether this is a random or real dataset
+if cmd_args.randomize_flag:
+	output_id = output_id+"_rand"
+else:
+	output_id = output_id+"_real"
+	
+#Append a tag indicating what score group is used to score differences.
+if cmd_args.score_mat in ("even", "group1", "group2"):
+	output_id = output_id+"_"+cmd_args.score_mat
+elif cmd_args.score_mat == None:
+	output_id = output_id+"_stdmatrix"
+else:
+	output_id = output_id+"_"+cmd_args.score_mat
+	
 
 error_log = sys.stderr
 if cmd_args.debug_flag:
@@ -147,7 +164,7 @@ def load_sequences(curr_filename):
 				curr_seq = curr_seq + line.rstrip().lower()
 		total_kmers += process_seq(curr_seq, master_dict)
 		in_handle.close()
-	return((master_dict, total_kmers))
+	return((master_dict, total_kmers,cycle_count))
 
 def plot_network(t_graph, filename_detail, fig_x=16,fig_y=22):
 	#Prepare plot of kmer network
@@ -175,10 +192,21 @@ m_graph = nx.Graph()
 
 #Define Distance Matrix for comparing strings.
 #score_mat = PAM250_special()
-pd = cp.scoring_distance(cmd_args.norm_flag)
+
+if cmd_args.score_mat == None:
+	pd = cp.scoring_distance(cmd_args.norm_flag)
+elif cmd_args.score_mat == "group1":
+	pd = cp.scoring_distance(cmd_args.norm_flag,matrix_dict=cp.group_scoring_v1)
+elif cmd_args.score_mat == "group2":
+	pd = cp.scoring_distance(cmd_args.norm_flag,matrix_dict=cp.group_scoring_v2)
+elif cmd_args.score_mat == "even":
+	pd = cp.scoring_distance(cmd_args.norm_flag,matrix_dict=cp.even_scoring)
+else:
+	pd = cp.scoring_distance(cmd_args.norm_flag,matrix_name=cmd_args.score_mat)
 
 print("Input path resolved to:", os.path.abspath(cmd_args.in_filename))
-main_dict, total_main = load_sequences(os.path.abspath(cmd_args.in_filename))
+main_dict, total_main, seq_main = load_sequences(os.path.abspath(cmd_args.in_filename))
+start_nodes = len(main_dict)
 
 #Convert Primary Dictionary to Node_set, filter out kmers with fewer than a minimum occurance cutoff
 node_set = [(i,{'weight':j}) for i,j in main_dict.items() if j >= cmd_args.min_node]
@@ -196,7 +224,7 @@ plt.savefig("kmer_frequency_histo"+output_id+".png",format="png")
 #Remove all nodes that have an enrichment lower than allowable enrichment.
 if cmd_args.in_background != "":
 	print("Input path resolved to:", os.path.abspath(cmd_args.in_background),file=error_log)
-	background_dict, total_back = load_sequences(os.path.abspath(cmd_args.in_background))
+	background_dict, total_back, seq_back = load_sequences(os.path.abspath(cmd_args.in_background))
 
 	back_set = [(i,{'weight':j}) for i,j in background_dict.items()]
 	b_graph = nx.Graph()
@@ -230,18 +258,24 @@ if cmd_args.in_background != "":
 			
 	m_graph.remove_nodes_from(remove_list)
 	#Add enrich attribute to nodes
-	nx.set_node_attributes(m_graph, 'enrich', enrich_attribute_dict)			
+	try:
+		nx.set_node_attributes(m_graph, name='enrich', values=enrich_attribute_dict)
+	except:
+		print("issue setting enrichment")
+		print(m_graph)
+		print(enrich_attribute_dict)
+		exit(1)			
 del back_set			
 	
-
 past_set = []
 
+first_pass_nodes = len(m_graph.node)
+first_pass_kmer_cnt = sum(nx.get_node_attributes(m_graph,'weight').values()) 
 
 
-print("Total Number of filtered Nodes", str(len(m_graph.node)))
 
 #Compute distances between nodes
-for i in m_graph.nodes_iter(): 
+for i in m_graph.nodes(): 
 	for j in past_set:
 		#print(i,j,[score_mat[i[c].upper(),j[c].upper()] for c in range(cmd_args.kmer_size)])
 		#Distance calculation between nodes
@@ -252,7 +286,7 @@ for i in m_graph.nodes_iter():
 				edge_weight = pd.compare_peptides_sp(i,j)
 		except KeyError:
 			print(str(i)+" "+str(j), file=error_log)
-			print(list(m_graph.nodes_iter()), file=error_log)
+			print(list(m_graph.nodes()), file=error_log)
 			raise
 		#edge_weight = (sum((score_mat[i[c].upper(),j[c].upper()] for c in range(cmd_args.kmer_size)))-min_score)/(max_score-min_score) #Old edge weight code, now in external module
 		if edge_weight >= cmd_args.min_edge:
@@ -266,13 +300,16 @@ for i in m_graph.nodes_iter():
 del_out = open("kmer_deleted"+input_name+"_"+output_id+".txt", 'w')
 node_weight = nx.get_node_attributes(m_graph, 'weight')
 if cmd_args.in_background != "":
-	for n,d in m_graph.degree_iter():
+	for n,d in m_graph.degree():
 		if d < cmd_args.min_degree:
 			for i in range(math.ceil(node_weight[n])):
 				print(n,file=del_out)
 
 #Delete nodes failing degree criteria
-m_graph.remove_nodes_from([n for n,d in m_graph.degree_iter() if d < cmd_args.min_degree])
+m_graph.remove_nodes_from([n for n,d in m_graph.degree() if d < cmd_args.min_degree])
+
+second_pass_nodes = str(len(m_graph.node))
+second_pass_kmer_cnt = sum(nx.get_node_attributes(m_graph,'weight').values())
 
 #Plot Graph ####
 plot_network(m_graph, output_id)
@@ -289,5 +326,21 @@ kmer_out = open("node_info"+input_name+"_"+output_id+".txt", 'w')
 for n,ndata in m_graph.nodes(data=True):
 	print(n+"\t"+str(ndata['weight'])+"\t"+str(ndata['enrich'])+"\t"+str(m_graph.degree(n))+"\t"+str(m_graph.degree(n,weight="weight")),file=kmer_out)
 kmer_out.close()
+
+
+print("Total Seq: ", str(seq_main))
+print("Total background seq: ", str(seq_back))
+print("Total Nodes: ", str(start_nodes))
+
+print("Total kmers: ", str(total_main))
+print("Total background kmers: ", str(total_back))
+
+print("Node Enrichment and Frequency Cutoff")
+print("First Pass Kmers: ", str(first_pass_kmer_cnt))
+print("First Pass Nodes: ", str(first_pass_nodes))
+
+print("Network Degree Cutoff")
+print("Second Pass Kmers: ", str(second_pass_kmer_cnt))
+print("Second Pass Nodes: ", str(second_pass_nodes))
 
 #print(m_graph.edges(data=True))
