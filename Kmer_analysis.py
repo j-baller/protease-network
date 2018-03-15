@@ -208,17 +208,17 @@ print("Input path resolved to:", os.path.abspath(cmd_args.in_filename))
 main_dict, total_main, seq_main = load_sequences(os.path.abspath(cmd_args.in_filename))
 start_nodes = len(main_dict)
 
+#Print plot showing kmer_distribution
+fig=plt.hist([math.log10(x) for x in main_dict.values()])
+#fig = plt.gcf()
+plt.savefig("kmer_frequency_histo"+output_id+".png",format="png")
+
 #Convert Primary Dictionary to Node_set, filter out kmers with fewer than a minimum occurance cutoff
 node_set = [(i,{'weight':j}) for i,j in main_dict.items() if j >= cmd_args.min_node]
 
 #Create Nodes in Network with a weight characteristic
 m_graph.add_nodes_from(node_set)
 node_weights = nx.get_node_attributes(m_graph,'weight').values()
-
-#Print plot showing kmer_distribution
-fig=plt.hist([math.log10(x) for x in list(node_weights)])
-#fig = plt.gcf()
-plt.savefig("kmer_frequency_histo"+output_id+".png",format="png")
 
 #If background is defined load the data, check enrichment levels
 #Remove all nodes that have an enrichment lower than allowable enrichment.

@@ -77,24 +77,29 @@ class Clustering:
 		outer_rec(hist_list,out_dir+"/align_root")
 	
 	def write_verbose_flat(self,out_dir,leaves=False):
+		#Check if data is availabe for generating full clustering
 		if not self._full_PWM._history:
 			raise TypeError("Clustering.write_verbose requires that the underlying PWM retained history in order to produce meaningful results")
+		#Pull out full history from PWM
 		hist_list = self._full_PWM._hist_list
-		def try_makedir(mk_loc):
+		def try_makedir(mk_loc): #Make DIR at location, check if already exists.
 			try:
 				os.makedirs(mk_loc)
 			except OSError as e:
 				if e.errno != errno.EEXIST:
 					raise
+		#Make base_dir at out_dir. All files are loaded to single directory.
 		try_makedir(out_dir)
+		#Recursive loop construct to work from root towards leaves.  
 		def outer_rec(br,base_dir,idx=0):
+			#Check if this is a list, and if list is appropriate length, otherwise this is a leaf node.
 			if type(br) == list and len(br) == 4:
 				curr_join = outer_rec(br[0],base_dir+"_0",idx+br[3])+outer_rec(br[1],base_dir+"_1",idx+br[3])
-				curr_join.write_logo(base_dir+"_")
+				curr_join.write_logo(base_dir+"_",br_diff=br[2])
 				return(curr_join)
-			else:
+			else: #if this is a leaf node, check if leaves should be written and return 
 				if leaves:
-					br.write_logo(base_dir+"_")
+					br.write_logo(base_dir+"_",br_diff=0)
 				return(br)		
 		outer_rec(hist_list,out_dir+"/logo_out")
 		
@@ -128,7 +133,7 @@ class PWM:
 		self.score_obj = score_obj
 		self._depth = rep
 		self._history = history
-		self._hist_list = self
+		self._hist_list = self #This seems wrong but I can't figure out what it was supposed to be, checks out according to version control though. Figured it out, _hist_list is generated as a list of all joined PWMs, the base of this is of course the starting PWM.
 	
 		
 	def _calc_entropy(self):
@@ -187,8 +192,10 @@ class PWM:
 			for line in PWM_elem:
 				print(line, file=out_handle)
 				
-	def write_logo(self, out_file_root, weblogo_exec='/panfs/roc/groups/2/support/jballer/Seelig/WebLogo/weblogo/weblogo'):
-		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))
+	def write_logo(self, out_file_root, weblogo_exec='/panfs/roc/groups/2/support/jballer/Seelig/WebLogo/weblogo/weblogo',br_diff=0):
+		if type(self._hist_list) == list:
+			
+		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(br_diff)
 		self.write_alignment(l_filepath+".txt")
 		call([weblogo_exec, '-Feps', '-slarge', '-Aprotein'],stdin=open(l_filepath+".txt"),stdout=open(l_filepath+".eps",'w'))
 		

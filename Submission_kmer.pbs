@@ -1,5 +1,5 @@
 #!/bin/bash -el
-#PBS -l nodes=1:ppn=10,mem=200gb,walltime=12:00:00 -q ram256g
+#PBS -l nodes=1:ppn=10,mem=200gb,walltime=72:00:00 -q ram256g
 #PBS -m abe
 
 module load python3
@@ -15,7 +15,7 @@ kmer_set()
 	e=$5
 	d=$6
 	c=$7
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c -a -z "pseudo" --replace_X --debug -p 'group2' 
+	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c -a -z "pseudo" --replace_X --debug -p 'even' 
 	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
 	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
 	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
