@@ -194,8 +194,10 @@ class PWM:
 				
 	def write_logo(self, out_file_root, weblogo_exec='/panfs/roc/groups/2/support/jballer/Seelig/WebLogo/weblogo/weblogo',br_diff=0):
 		if type(self._hist_list) == list:
-			
-		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(br_diff)
+			curr_diff=br_diff
+		else:
+			curr_diff=0
+		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(curr_diff)
 		self.write_alignment(l_filepath+".txt")
 		call([weblogo_exec, '-Feps', '-slarge', '-Aprotein'],stdin=open(l_filepath+".txt"),stdout=open(l_filepath+".eps",'w'))
 		
