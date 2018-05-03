@@ -7,9 +7,10 @@ import copy
 import pickle
 import errno
 from subprocess import call
+import sys
+
 
 #For testing
-#import sys
 #sys.path.insert(0, "/Users/Joshua Baller/Documents/Seelig/protease-sites/")
 #import compare_peptides as cp
 #sd = cp.scoring_distance()
@@ -107,6 +108,7 @@ class PWM:
 		self._depth = rep
 		self._history = history
 		self._hist_list = self
+		self._cleave_site=None
 	
 	def __copy__(self):
 		new_pwm = PWM('',self.score_obj)
@@ -114,11 +116,19 @@ class PWM:
 		new_pwm._curr_PWM = copy.deepcopy(self._curr_PWM)
 		new_pwm._history = self._history
 		new_pwm._hist_list = self._hist_list
+		new_pwm._cleave_site=self._cleave_site
 		return(new_pwm)	
 	
 	def length(self):
+		"""Returns length of PWM, this is the width of the PWM representation (the number of non gap positions). 
+			Length is used to conform to the standard Python convensions.  
+		"""
 		return len(self._curr_PWM)
-	
+
+	def set_cleavage(self, pos=None):
+		"""Sets cleavage position for this PWM"""
+		self._cleave_site=pos
+				
 	def write_alignment(self,out_file):
 		if self._history:
 			out_handle = open(out_file, 'w')
@@ -156,43 +166,64 @@ class PWM:
 		
 	
 	def _compare_PWM_sp(self, pwm1, pwm2, phase=0):
+		"""This function accepts two Position Weight Matrices (PWM) and returns the similarity score of the two PWMs based on the provided phase. Returns a 2-tuple with:
+			0 - The alignments score
+			1 - Another 2-tuple of positions in each PWM
+			
+		Arguments are pwm1 and pwm2, PWM class objects as well as phase where a phase of 0 aligns both sequences on their first position. A positive phase moves pwm2 to the right.
+		""" 
+		#Get a list of positions in each passed pwm.
 		idx1 = list(range(0,len(pwm1)))
 		idx2 = list(range(0,len(pwm2)))
+
+		#Add padding to left side of one of the PWMs based on the phase
 		if phase > 0:
 			idx2 = [-1]*phase + idx2
 		elif phase < 0:
 			idx1 = [-1]*abs(phase) + idx1
+
+		#Add padding to shorter PWM based on length comparision.
 		if len(idx1) > len(idx2):
 			idx2 = idx2 + [-1]*(len(idx1) - len(idx2))
 		elif len(idx2) > len(idx1):
 			idx1 = idx1 + [-1]*(len(idx2) - len(idx1))
 		n_iter = len(idx1) #equal to len(pep2) due to 'X' padding
 		
-		#Still needs work below here
+		#Compute actual alignment.
 		align_score =0
-		for p in range(n_iter):
+		for p in range(n_iter): #For each position within alignment
 			if idx1[p] == -1 and idx2[p] == -1: #This case should probably never happen
 				align_score += self.score_obj['X','X']
 				print("Double end gap occurred")
-			elif idx1[p] == -1:
-				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm2[idx2[p]].items()])/sum(pwm2[idx2[p]].values())
-			elif idx2[p] == -1:
+			elif idx1[p] == -1: #If pwm1 is a gap in this positon
+				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm2[idx2[p]].items()])/sum(pwm2[idx2[p]].values()) #Extract the frequency of each AA, compute score against gap, normalize result 
+			elif idx2[p] == -1: $If pwm2 is a gap in this position
 				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm1[idx1[p]].items()])/sum(pwm1[idx1[p]].values())
-			else:
+			else: #If neither of the positions has a gap, do a full scoring.
 				align_score += sum((self.score_obj[tup1[0],tup2[0]]*tup1[1]*tup2[1] for tup1, tup2 in itertools.product(pwm1[idx1[p]].items(), pwm2[idx2[p]].items())))/(sum(pwm1[idx1[p]].values())*sum(pwm2[idx2[p]].values()))
 		return((align_score,(idx1, idx2)))
-		#edge_weight = (sum((self[pep1[c].upper(),pep2[c].upper()]-self.min_score)/(self.max_score-self.min_score) for c in range(n_iter)))/n_iter
 
 	def _compare_PWM_mp(self, pwm1,pwm2):
-		phases = len(pwm1)+len(pwm2)-1
-		min_phase = -1*len(pwm2)+1
-		out = []
-		#Total phases are (n+m)-1, 
-		for p in range(min_phase, phases+min_phase):
-			out.append(self._compare_PWM_sp(pwm1,pwm2,phase=p))
-		res_max = max(out,key=itemgetter(0))
-		return((res_max[0],res_max[1]))
-		
+		"""This function iterates over multiple phases, scoring them with calls to _compare_PWM_sp() 
+			This function returns a 2-tuple with:
+				0 - Maximum Similarity
+				1 - Information on the phase alignment (2-tuple) i
+		   In Progress: If both pwms have a fixed cleavage point, skip actual alignment and just align on cleavage points. #NOTE
+		"""
+		if pwm1._cleave_site is None or pwm2._cleave_site is None:
+			phases = len(pwm1)+len(pwm2)-1
+			min_phase = -1*len(pwm2)+1
+			out = []
+			#Total phases are (n+m)-1, 
+			for p in range(min_phase, phases+min_phase):
+				out.append(self._compare_PWM_sp(pwm1,pwm2,phase=p))
+			res_max = max(out,key=itemgetter(0))
+			return((res_max[0],res_max[1]))
+		else:
+			p = pwm1._cleave_site - pwm2._cleave_site			
+			out = self._compare_PWM_sp(pwm1, pwm2, phase=p)
+			return(out)
+
 	def __mul__(self, other):
 		return(self._score_and_align(other)[0])
 
@@ -233,6 +264,8 @@ class PWM:
 				else:
 					out_PWM._curr_PWM[pos] = self._curr_PWM[idxs[0]] + other._curr_PWM[idxs[1]]
 			out_PWM._depth = self._depth+ other._depth
+			out_PWM._cleave_site = 
+
 			if out_PWM._history:
 				out_PWM._hist_list = [self._hist_list, other._hist_list] + self._score_and_align(other)
 			else:
@@ -243,7 +276,6 @@ class PWM:
 	def __radd__(self,other):
 		return(self.__add__(other))
 		
-import sys;
    
 class scoring_distance(object):
 	"""The PAM250 scoring matrix class."""
