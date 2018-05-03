@@ -26,7 +26,11 @@ def read_kmer_out_to_dict(filename):
 		
 		
 class Clustering:
-	def __init__(self, kmer_dict,scoring_class):
+	def __init__(self, kmer_dict,scoring_class,known_cleavage=None):
+		""" The clustering function accepts a kmer dictionary with kmers as keys, and counts as values. These kmers are then clustered
+		based hierarchical based on the scoring functions passed in. A set of known cleavage sites can be provided in order to force 
+		alignments based on known information.
+		"""
 		self.kmers = kmer_dict
 		self.score = scoring_class
 		self._full_PWM = self._build_hiercluster()
@@ -134,7 +138,6 @@ class PWM:
 		self.score_obj = score_obj
 		self._depth = rep
 		self._history = history
-		self._hist_list = self
 		self._cleave_site=None
 		self._hist_list = self #This seems wrong but I can't figure out what it was supposed to be, checks out according to version control though. Figured it out, _hist_list is generated as a list of all joined PWMs, the base of this is of course the starting PWM.
 	
@@ -169,7 +172,7 @@ class PWM:
 		return len(self._curr_PWM)
 
 	def set_cleavage(self, pos=None):
-		"""Sets cleavage position for this PWM"""
+		"""Sets cleavage position for this PWM. Left of the first amino acid is position 0, incrementing to the right"""
 		self._cleave_site=pos
 				
 	def write_alignment(self,out_file):
@@ -301,6 +304,7 @@ class PWM:
 			m_score, m_idxs = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
 			m_idx1, m_idx2 = m_idxs
 			out_PWM = copy.copy(self)
+		
 			for pos, idxs in enumerate(zip(m_idx1,m_idx2)):
 				if idxs[0] == -1 and idxs[1] == -1:
 					print("Double end gap occurred")
@@ -312,7 +316,24 @@ class PWM:
 				else:
 					out_PWM._curr_PWM[pos] = self._curr_PWM[idxs[0]] + other._curr_PWM[idxs[1]]
 			out_PWM._depth = self._depth+ other._depth
-			out_PWM._cleave_site = 
+			
+			#Check if either PWM has a known cleavage site. If so, adjust the cleavage site position of sum by evaluating the amount of padding upstream.
+			if self._cleave_site is not None:
+				out_PWM._cleave_site = self._cleave_site
+				for i in m_idx1:
+					if i == -1:
+						out_PWM._cleave_site += 1
+					else:
+						break		
+			else if other._cleave_site is not None:
+				out_PWM._cleave_site = other._cleave_site
+				for i in m_idx2:
+					if i == -1:
+						out_PWM._cleave_site += 1
+					else:
+						break		
+			else:
+				out_PWM._cleave_site=None
 
 			if out_PWM._history:
 				out_PWM._hist_list = [self._hist_list, other._hist_list] + self._score_and_align(other)
