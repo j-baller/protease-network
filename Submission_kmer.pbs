@@ -1,5 +1,5 @@
 #!/bin/bash -el
-#PBS -l nodes=1:ppn=10,mem=200gb,walltime=10:00:00 -q ram256g
+#PBS -l nodes=1:ppn=10,mem=200gb,walltime=72:00:00 -q ram256g
 #PBS -m abe
 
 module load python3
@@ -15,7 +15,7 @@ kmer_set()
 	e=$5
 	d=$6
 	c=$7
-	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c -a -z "pseudo" --replace_X --debug 
+	python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c -a -z "pseudo" --replace_X --debug -p 'even' 
 	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
 	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
 	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
@@ -28,16 +28,43 @@ kmer_set()
 	#python3 Kmer_analysis.py $casefile -b $controlfile -k $k -n $n -e $e -d $d -c $c --random --replace_X &
 
 }
-kmer_set "Fxa20R1.pep.pt.fasta" "ResinLibrary.pep.pt.fasta" 6 10 8 4 0.65 &
-kmer_set "Fxa1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 10 4 0.65 &
-kmer_set "ADAM171R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 8 4 0.65 &
-kmer_set "ADAM1750R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 6 4 0.65 &
+# Input, Background, kmer_size, minimum_count, fold_enrichment, min_degree, similarity_cutoff 
+
+kmer_set "Fxa20R1.pep.pt.fasta" "ResinLibrary.pep.pt.fasta" 6 7 6 4 0.55 &
+kmer_set "Fxa1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 10 4 0.55 &
+kmer_set "ADAM171R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 7 6 4 0.55 &
+kmer_set "ADAM1750R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 7 6 4 0.55 &
 wait
-kmer_set "Fxa400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 5 4 0.65 &
-kmer_set "SpeB1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 10 4 0.65 &
-kmer_set "SpeB20R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 12 4 0.65 &
-kmer_set "SpeB400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 6 4 0.65 &
+kmer_set "Fxa400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 7 6 4 0.55 &
+kmer_set "SpeB1R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 7 6 4 0.55 &
+kmer_set "SpeB20R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 7 6 4 0.55 &
+kmer_set "SpeB400R1.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 7 6 4 0.55 &
 wait
+
+#kmer_set "Fxa20R1.pep.pt.fasta" "Library.pep.pt.fasta" 6 10 8 4 0.55 &
+#kmer_set "Fxa1R1.pep.pt.fasta"  "Library.pep.pt.fasta" 6 10 10 4 0.55 &
+#kmer_set "ADAM171R1.pep.pt.fasta"  "Library.pep.pt.fasta" 6 10 8 4 0.55 &
+#kmer_set "ADAM1750R1.pep.pt.fasta"  "Library.pep.pt.fasta" 6 10 6 4 0.55 &
+#wait
+
+#kmer_set "Fxa400R1.pep.pt.fasta"  "Library.pep.pt.fasta" 6 10 5 4 0.55 &
+#kmer_set "SpeB1R1.pep.pt.fasta"  "Library.pep.pt.fasta" 6 10 10 4 0.55 &
+#kmer_set "SpeB20R1.pep.pt.fasta"  "Library.pep.pt.fasta" 6 10 12 4 0.55 &
+#kmer_set "SpeB400R1.pep.pt.fasta"  "Library.pep.pt.fasta" 6 10 6 4 0.55 &
+#wait
+#
+#kmer_set "Fxa20R2.pep.pt.fasta" "ResinLibrary.pep.pt.fasta" 6 10 8 4 0.55 &
+#kmer_set "Fxa1R2.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 10 4 0.55 &
+#kmer_set "ADAM171R2.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 8 4 0.55 &
+#kmer_set "ADAM1750R2.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 6 4 0.55 &
+#wait
+#kmer_set "Fxa400R2.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 5 4 0.55 &
+#kmer_set "SpeB1R2.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 10 4 0.55 &
+#kmer_set "SpeB20R2.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 12 4 0.55 &
+#kmer_set "SpeB400R2.pep.pt.fasta"  "ResinLibrary.pep.pt.fasta" 6 10 6 4 0.55 &
+#wait
+#
+
 
 #171R1.pep.pt.fasta                Fxa20R2.pep.pt.fasta              SpeB20R1.pep.pt.fasta
 #A1750R1.pep.pt.fasta               Fxa400R1.pep.pt.fasta             SpeB20R1.pt.fasta
