@@ -24,18 +24,57 @@ def read_kmer_out_to_dict(filename):
 		out_dict[line] += 1
 	return(out_dict)
 		
+
+class Cleavage_matrix:
+	def __init__(self, cleave_filename):
+		curr_handle=open(cleave_filename, "r")
+		self.hold_arr = []
+		for i in curr_handle:
+			line = line.rstrip()
+			line_arr = line.split(",")
+			self.hold_arr.append((line_arr[0],line_arr[1:]))
+	def get_cleave_pos(self, kmer):
+		""" Return list of 2-tuples for kmer, 0 - cut location, 1 - proportion of results
+		"""
+		match_list = [(cleamer[0].find(kmer), cleamer[1]) for cleamer in self.hold_arr if kmer in cleamer[0]]
+		
+		if len(match_list) == 0:
+			return(None)
+			
+		match_list = [clv_rate[mat_pos:(mat_pos+len(kmer)+1) ] for mat_pos,clv_rate in match_list if sum(clv_rate[mat_pos:(mat_pos+len(kmer)) ]) > 0 ]
+
+		if len(match_list) == 0:
+			return(None)		
+		
+		match_list = [sum(x) for x in zip(*match_list)]
+		match_sum = sum([x[1] for x in match_list])
+		
+		return( [(pos,cnt/match_sum) for pos,cnt in enumerate(match_list)]
+		
+		
 		
 class Clustering:
 	def __init__(self, kmer_dict,scoring_class,known_cleavage=None):
 		""" The clustering function accepts a kmer dictionary with kmers as keys, and counts as values. These kmers are then clustered
-		based hierarchical based on the scoring functions passed in. A set of known cleavage sites can be provided in order to force 
+		based hierarchical based on the scoring functions passed in. A set of known cleavage sites (matrix with sequence and cleavage occurance) can be provided in order to force 
 		alignments based on known information.
 		"""
 		self.kmers = kmer_dict
 		self.score = scoring_class
+		self.known_cleavage=known_cleavage
 		self._full_PWM = self._build_hiercluster()
 	def _build_hiercluster(self):
-		item_list = [PWM(i,self.score,j,history=True) for i,j in self.kmers.items()] # Convert kmer input into a list of individual PWMs
+		if self.known_cleavage is None:
+			item_list = [PWM(kmer,self.score,freq,history=True) for kmer,freq in self.kmers.items()] # Convert kmer input into a list of individual PWMs
+		else:
+			item_list = []
+			for kmer,k_freq in self.kmers.items():
+				cleave_pos = self.known_cleavage.get_cleave_pos(kmer)
+				for pos,c_prop in cleave_pos:
+					c_freq = round(c_prop*k_freq)
+					if c_freq > 0:
+						item_list.append(PWM(kmer,self.score,c_freq,history=True,cleave_pos=pos)
+				
 		pair_iter =itertools.combinations(item_list,2) # Generate all of the combinations of Kmer comparisions
 		score_list = [(i,j,i*j) for i,j in pair_iter]
 		while len(item_list) > 1:
@@ -129,7 +168,7 @@ class Empirical_Error:
 	
 class PWM:
 	err_obj = Empirical_Error()
-	def __init__(self,in_str,score_obj,rep=1,history=False):
+	def __init__(self,in_str,score_obj,rep=1,history=False, cleave_pos=None):
 		if len(in_str) > 0:
 			self._curr_PWM = [Counter({char:rep}) for char in in_str.upper()] # Getting null strings, need to investigate
 			self._calc_entropy()
@@ -138,7 +177,7 @@ class PWM:
 		self.score_obj = score_obj
 		self._depth = rep
 		self._history = history
-		self._cleave_site=None
+		self._cleave_site=cleave_pos
 		self._hist_list = self #This seems wrong but I can't figure out what it was supposed to be, checks out according to version control though. Figured it out, _hist_list is generated as a list of all joined PWMs, the base of this is of course the starting PWM.
 	
 		
@@ -165,15 +204,13 @@ class PWM:
 		new_pwm._calc_entropy()
 		return(new_pwm)	
 	
+	
 	def length(self):
 		"""Returns length of PWM, this is the width of the PWM representation (the number of non gap positions). 
 			Length is used to conform to the standard Python convensions.  
 		"""
 		return len(self._curr_PWM)
 
-	def set_cleavage(self, pos=None):
-		"""Sets cleavage position for this PWM. Left of the first amino acid is position 0, incrementing to the right"""
-		self._cleave_site=pos
 				
 	def write_alignment(self,out_file):
 		if self._history:
@@ -290,11 +327,10 @@ class PWM:
 		else:
 			print((self,other))
 			raise TypeError('Scoring of PWMs is only defined for Strings and PWMs')
-		
-			
+					
 	def __rmul__(self, other):
 		return(self.__mul__(other))
-		
+	
 	def __add__(self, other):
 		if type(other) == str:
 			return(self+PWM(other, self.score_obj))
