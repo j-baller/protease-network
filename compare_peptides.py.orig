@@ -134,8 +134,10 @@ class PWM:
 		self.score_obj = score_obj
 		self._depth = rep
 		self._history = history
+<<<<<<< HEAD
 		self._hist_list = self
 		self._cleave_site=None
+=======
 		self._hist_list = self #This seems wrong but I can't figure out what it was supposed to be, checks out according to version control though. Figured it out, _hist_list is generated as a list of all joined PWMs, the base of this is of course the starting PWM.
 	
 		
@@ -151,6 +153,7 @@ class PWM:
 			self._entropy = accum/len(self._curr_PWM)
 				
 			
+>>>>>>> d193fe76755b3692c5464fad0d66333f398b03e5
 	
 	def __copy__(self):
 		new_pwm = PWM('',self.score_obj)
@@ -158,8 +161,11 @@ class PWM:
 		new_pwm._curr_PWM = copy.deepcopy(self._curr_PWM)
 		new_pwm._history = self._history
 		new_pwm._hist_list = self._hist_list
+<<<<<<< HEAD
 		new_pwm._cleave_site=self._cleave_site
+=======
 		new_pwm._calc_entropy()
+>>>>>>> d193fe76755b3692c5464fad0d66333f398b03e5
 		return(new_pwm)	
 	
 	def length(self):
@@ -208,7 +214,7 @@ class PWM:
 			curr_diff=br_diff
 		else:
 			curr_diff=0
-		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(curr_diff/len(self._curr_PWM))+"_wid_"+str(len(self._curr_PWM))+"_Ks_"+str(len(self._curr_PWM[0]))
+		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(curr_diff)
 		self.write_alignment(l_filepath+".txt")
 		call([weblogo_exec, '-Feps', '-slarge', '-Aprotein'],stdin=open(l_filepath+".txt"),stdout=open(l_filepath+".eps",'w'))
 		
