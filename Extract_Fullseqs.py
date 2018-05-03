@@ -14,7 +14,7 @@ parser.add_argument("-k","--query_kmers", nargs="+", help="Query sequences to be
 parser.add_argument("-o","--output_name", help="Output root, if blank, write to terminal",default="")
 parser.add_argument("-l", "--left_flank", help="Amino Acid sequence of Left Flank", default='PQP')
 parser.add_argument("-r", "--right_flank", help="Amino Acid sequence of Right Flank", default='PQP')
-parser.add_argument("--replace_X", help="replace X's with flanking sequences",action="store_true",dest="replace_flag",default=False)
+parser.add_argument("--dont_replace_X", help="replace X's with flanking sequences",action="store_false",dest="replace_flag",default=True)
 parser.add_argument("-d",help="Allowed distance from center, 0 will return no result if the parity of the peptide and kmer are different", dest="dist_center", default=.5,type=float)
 
 cmd_args = parser.parse_args()
@@ -48,7 +48,13 @@ def scan_sequences(curr_filename):
 			for n,query_kmer in enumerate(cmd_args.query_kmers):
 				q_cent = len(query_kmer)/2  
 				if abs(curr_seq.lower().find(query_kmer.lower())+q_cent - seq_cent) <= cmd_args.dist_center:
-					out_arr[n].append((line.strip(), curr_seq.lower()))
+					if curr_seq.strip() == "":
+						print("Attempted pass of empty line passed to next stage")
+						print("q_cent="+str(q_cent))
+						print("seq_cent="+str(seq_cent))
+						print("line="+line.strip())
+					else:
+						out_arr[n].append((line.strip(), curr_seq.lower()))
 			curr_seq = ""
 			hold_title = line
 		else:

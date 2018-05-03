@@ -197,7 +197,7 @@ class PWM:
 			curr_diff=br_diff
 		else:
 			curr_diff=0
-		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(curr_diff)
+		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(curr_diff/len(self._curr_PWM))+"_wid_"+str(len(self._curr_PWM))+"_Ks_"+str(len(self._curr_PWM[0]))
 		self.write_alignment(l_filepath+".txt")
 		call([weblogo_exec, '-Feps', '-slarge', '-Aprotein'],stdin=open(l_filepath+".txt"),stdout=open(l_filepath+".eps",'w'))
 		
