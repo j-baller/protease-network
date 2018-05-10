@@ -29,27 +29,34 @@ class Cleavage_matrix:
 	def __init__(self, cleave_filename):
 		curr_handle=open(cleave_filename, "r")
 		self.hold_arr = []
-		for i in curr_handle:
+		for line in curr_handle:
 			line = line.rstrip()
 			line_arr = line.split(",")
-			self.hold_arr.append((line_arr[0],line_arr[1:]))
+			self.hold_arr.append((line_arr[0],list(map(int, line_arr[1:]))))
 	def get_cleave_pos(self, kmer):
 		""" Return list of 2-tuples for kmer, 0 - cut location, 1 - proportion of results
 		"""
-		match_list = [(cleamer[0].find(kmer), cleamer[1]) for cleamer in self.hold_arr if kmer in cleamer[0]]
-		
+		#Match list will be: (Position of match, list of cleavage rates per position)
+		match_list = [(cleamer[0].upper().find(kmer.upper()), cleamer[1]) for cleamer in self.hold_arr if kmer.upper() in cleamer[0].upper()]	
 		if len(match_list) == 0:
 			return(None)
 			
+		#Match list will be: list of cleavage rates that align with kmer match
 		match_list = [clv_rate[mat_pos:(mat_pos+len(kmer)+1) ] for mat_pos,clv_rate in match_list if sum(clv_rate[mat_pos:(mat_pos+len(kmer)) ]) > 0 ]
+		
+		print("second transform")
+		print(match_list)
 
 		if len(match_list) == 0:
 			return(None)		
-		
+	
 		match_list = [sum(x) for x in zip(*match_list)]
-		match_sum = sum([x[1] for x in match_list])
+		match_sum = sum(match_list)
+
+		print("third transform")
+		print(match_list)
 		
-		return( [(pos,cnt/match_sum) for pos,cnt in enumerate(match_list)]
+		return( [(pos,cnt/match_sum) for pos,cnt in enumerate(match_list)])
 		
 		
 		
@@ -67,13 +74,18 @@ class Clustering:
 		if self.known_cleavage is None:
 			item_list = [PWM(kmer,self.score,freq,history=True) for kmer,freq in self.kmers.items()] # Convert kmer input into a list of individual PWMs
 		else:
-			item_list = []
+			item_list = [] 
 			for kmer,k_freq in self.kmers.items():
 				cleave_pos = self.known_cleavage.get_cleave_pos(kmer)
-				for pos,c_prop in cleave_pos:
-					c_freq = round(c_prop*k_freq)
-					if c_freq > 0:
-						item_list.append(PWM(kmer,self.score,c_freq,history=True,cleave_pos=pos)
+				if cleave_pos is not None:
+					for pos,c_prop in cleave_pos:
+						c_freq = round(c_prop*k_freq)
+						if c_freq > 0:
+							item_list.append(PWM(kmer,self.score,c_freq,history=True,cleave_pos=pos))
+						else:
+							print("fraction rounded to zero when splitting cleavage sites")
+				else: #No match to a cleavage site sequence
+					item_list.append(PWM(kmer,self.score,k_freq,history=True,cleave_pos=None))
 				
 		pair_iter =itertools.combinations(item_list,2) # Generate all of the combinations of Kmer comparisions
 		score_list = [(i,j,i*j) for i,j in pair_iter]
@@ -253,13 +265,17 @@ class PWM:
 		call([weblogo_exec, '-Feps', '-slarge', '-Aprotein'],stdin=open(l_filepath+".txt"),stdout=open(l_filepath+".eps",'w'))
 		
 	
-	def _compare_PWM_sp(self, pwm1, pwm2, phase=0):
+	def _compare_PWM_sp(self, other, phase=0):
 		"""This function accepts two Position Weight Matrices (PWM) and returns the similarity score of the two PWMs based on the provided phase. Returns a 2-tuple with:
 			0 - The alignments score
 			1 - Another 2-tuple of positions in each PWM
 			
 		Arguments are pwm1 and pwm2, PWM class objects as well as phase where a phase of 0 aligns both sequences on their first position. A positive phase moves pwm2 to the right.
 		""" 
+
+		pwm1 = self._curr_PWM
+		pwm2 = other._curr_PWM
+
 		#Get a list of positions in each passed pwm.
 		idx1 = list(range(0,len(pwm1)))
 		idx2 = list(range(0,len(pwm2)))
@@ -285,31 +301,34 @@ class PWM:
 				print("Double end gap occurred")
 			elif idx1[p] == -1: #If pwm1 is a gap in this positon
 				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm2[idx2[p]].items()])/sum(pwm2[idx2[p]].values()) #Extract the frequency of each AA, compute score against gap, normalize result 
-			elif idx2[p] == -1: $If pwm2 is a gap in this position
+			elif idx2[p] == -1: #If pwm2 is a gap in this position
 				align_score += sum([self.score_obj[AA,'X']*cnt for AA, cnt in pwm1[idx1[p]].items()])/sum(pwm1[idx1[p]].values())
 			else: #If neither of the positions has a gap, do a full scoring.
 				align_score += sum((self.score_obj[tup1[0],tup2[0]]*tup1[1]*tup2[1] for tup1, tup2 in itertools.product(pwm1[idx1[p]].items(), pwm2[idx2[p]].items())))/(sum(pwm1[idx1[p]].values())*sum(pwm2[idx2[p]].values()))
 		return((align_score,(idx1, idx2)))
 
-	def _compare_PWM_mp(self, pwm1,pwm2):
+	def _compare_PWM_mp(self, other):
 		"""This function iterates over multiple phases, scoring them with calls to _compare_PWM_sp() 
 			This function returns a 2-tuple with:
 				0 - Maximum Similarity
 				1 - Information on the phase alignment (2-tuple) i
 		   In Progress: If both pwms have a fixed cleavage point, skip actual alignment and just align on cleavage points. #NOTE
 		"""
-		if pwm1._cleave_site is None or pwm2._cleave_site is None:
+		pwm1 = self._curr_PWM
+		pwm2 = other._curr_PWM
+
+		if self._cleave_site is None or other._cleave_site is None:
 			phases = len(pwm1)+len(pwm2)-1
 			min_phase = -1*len(pwm2)+1
 			out = []
 			#Total phases are (n+m)-1, 
 			for p in range(min_phase, phases+min_phase):
-				out.append(self._compare_PWM_sp(pwm1,pwm2,phase=p))
+				out.append(self._compare_PWM_sp(other,phase=p))
 			res_max = max(out,key=itemgetter(0))
 			return((res_max[0],res_max[1]))
 		else:
-			p = pwm1._cleave_site - pwm2._cleave_site			
-			out = self._compare_PWM_sp(pwm1, pwm2, phase=p)
+			p = self._cleave_site - other._cleave_site			
+			out = self._compare_PWM_sp(other, phase=p)
 			return(out)
 
 	def __mul__(self, other):
@@ -321,7 +340,7 @@ class PWM:
 		elif type(other) == PWM:
 			if self.score_obj != other.score_obj:
 				raise TypeError('Scoring of PWMs is only defined for PWMs using the same scoring object')
-			m_score, m_idxs = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
+			m_score, m_idxs = self._compare_PWM_mp(other)
 			m_idx = len(list(itertools.takewhile(lambda x: x==-1, m_idxs[0])))-len(list(itertools.takewhile(lambda x: x==-1, m_idxs[1])))
 			return([m_score,m_idx])
 		else:
@@ -337,7 +356,7 @@ class PWM:
 		elif type(other) == PWM:
 			if self.score_obj != other.score_obj:
 				raise TypeError('Addition of PWMs is only defined for PWMs using the same scoring object')
-			m_score, m_idxs = self._compare_PWM_mp(self._curr_PWM, other._curr_PWM)
+			m_score, m_idxs = self._compare_PWM_mp(other)
 			m_idx1, m_idx2 = m_idxs
 			out_PWM = copy.copy(self)
 		
@@ -361,7 +380,7 @@ class PWM:
 						out_PWM._cleave_site += 1
 					else:
 						break		
-			else if other._cleave_site is not None:
+			elif other._cleave_site is not None:
 				out_PWM._cleave_site = other._cleave_site
 				for i in m_idx2:
 					if i == -1:

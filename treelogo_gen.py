@@ -22,9 +22,9 @@ if cmd_args.score_mat == 'group1':
 if cmd_args.score_mat == 'group2':
 	sd = cp.scoring_distance(normalize=False,matrix_dict=cp.group_scoring_v2)
 
-
+clv_mat = cp.Cleavage_matrix("adam17_even_cleave_sites.csv")
 kmer_dict = cp.read_kmer_out_to_dict(cmd_args.in_kmers)
-clust = cp.Clustering(kmer_dict,sd)
+clust = cp.Clustering(kmer_dict,sd,known_cleavage=clv_mat)
 #clust.write_history(cmd_args.root_path+"_"+cmd_args.score_mat+".pickle")
 clust.write_verbose_flat(cmd_args.root_path+"_"+cmd_args.score_mat+"_tree/")
 del clust
