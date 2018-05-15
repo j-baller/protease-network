@@ -260,7 +260,20 @@ class PWM:
 			curr_diff=br_diff
 		else:
 			curr_diff=0
-		l_filepath = out_file_root+"ent_"+str(self._entropy)+"_cnt_"+str(sum(self._curr_PWM[0].values()))+"_dif_"+str(curr_diff/len(self._curr_PWM))+"_wid_"+str(len(self._curr_PWM))+"_Ks_"+str(len(self._curr_PWM[0]))
+		out_param = {}
+		out_param["entropy"] = self._entropy
+		out_param["count"] = sum(self._curr_PWM[0].values())
+		out_param["similariy"] = curr_diff/len(self._curr_PWM)
+		out_param["width"] = len(self._curr_PWM)
+		out_param["kmers"] = len(self._curr_PWM[0])
+		out_param["cleavage"] = self._cleave_site
+
+		l_filepath = out_file_root
+		param_handle = open(l_filepath+"param.txt", "w")
+		for i,j in out_param.items():
+			print(str(i)+","+str(j),file=param_handle)
+			
+
 		self.write_alignment(l_filepath+".txt")
 		call([weblogo_exec, '-Feps', '-slarge', '-Aprotein'],stdin=open(l_filepath+".txt"),stdout=open(l_filepath+".eps",'w'))
 		
