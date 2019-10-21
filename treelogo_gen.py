@@ -1,5 +1,4 @@
 import sys
-sys.path.insert(0, "/Users/Joshua Baller/Documents/Seelig/protease-sites/")
 import compare_peptides as cp
 from subprocess import call
 import argparse
