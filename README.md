@@ -8,6 +8,6 @@ These scripts provide the different steps for identifying overrepresented motifs
 
 ## Helper Scripts
 * **Extract_Fullseqs.py** - Pull all the full sequences that contain a specific kmer.
-* **ImageComposite** - Accepts a directory path to a folder of WebLogo images. Makes a composite image from these individual images.
+* **ImageComposite.py** - Accepts a directory path to a folder of WebLogo images. Makes a composite image from these individual images.
 
 
