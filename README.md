@@ -10,4 +10,7 @@ These scripts provide the different steps for identifying overrepresented motifs
 * **Extract_Fullseqs.py** - Pull all the full sequences that contain a specific kmer.
 * **ImageComposite.py** - Accepts a directory path to a folder of WebLogo images. Makes a composite image from these individual images.
 
+## Function Library
+* **compare_peptides.py** - Library of functions called by other scripts.
+
 
