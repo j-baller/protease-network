@@ -255,7 +255,7 @@ class PWM:
 			for line in PWM_elem:
 				print(line, file=out_handle)
 				
-	def write_logo(self, out_file_root, weblogo_exec='/panfs/roc/groups/2/support/jballer/Seelig/WebLogo/weblogo/weblogo',br_diff=0):
+	def write_logo(self, out_file_root, weblogo_exec='./WebLogo/weblogo/weblogo',br_diff=0):
 		if type(self._hist_list) == list:
 			curr_diff=br_diff
 		else:
