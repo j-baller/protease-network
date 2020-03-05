@@ -15,4 +15,4 @@ kmer_set()
 }
 # Input, Background, kmer_size, minimum_count, fold_enrichment, min_degree, similarity_cutoff 
 
-kmer_set "../test_data/SpeB20_samp.fasta" "../test_data/resin_samp.fasta" 6 7 6 4 0.55 &
+kmer_set "../test_data/SpeB20_samp.fasta" "../test_data/resin_samp.fasta" 4 2 2 3 0.45 
