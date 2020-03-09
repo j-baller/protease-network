@@ -1,9 +1,4 @@
-#!/usr/bin/env python
-
-# -------------------------------- WebLogo --------------------------------
-
-#  Copyright (c) 2003-2004 The Regents of the University of California.
-#  Copyright (c) 2005 Gavin E. Crooks
+#  Copyright (c) 2005 Gavin E. Crooks <gec@threeplusone.com>
 #  Copyright (c) 2006, The Regents of the University of California, through 
 #  Lawrence Berkeley National Laboratory (subject to receipt of any required
 #  approvals from the U.S. Dept. of Energy).  All rights reserved.
@@ -38,34 +33,34 @@
 #  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 #  POSSIBILITY OF SUCH DAMAGE. 
 
-""" WebLogo is a tool for creating sequence logos from biological sequence
-alignments.  It can be run on the command line, as a standalone webserver, as a
-CGI webapp, or as a python library.
 
-For help on the command line interface run
-    ./weblogo.py --help
+""" A python toolkit for computational biology. 
 
-To build a simple logo run
-    ./weblogo.py  < cap.fa > logo0.eps
+https://github.com/WebLogo/weblogo
+
+Attributes:
+    __version__ - The corebio version.
+    description - The library name, version and release date.
+    user_agent  - The http user agent string used by corebio. 
+
+Environment Variables:
+    - COREBIOPATH -- An alternative search path for shell commands. Used
+        by corebio.utils.find_command
     
-To run as a standalone webserver at localhost:8080 
-    ./weblogo.py --serve
-
-
 """
-import weblogolib._cli
+from __future__ import absolute_import
 
-# Standard python voodoo for CLI
-if __name__ == "__main__":
-    ## Code Profiling. Uncomment these lines
-    # import hotshot, hotshot.stats
-    # prof = hotshot.Profile("stones.prof")
-    # prof.runcall(main)
-    # prof.close()
-    # stats = hotshot.stats.load("stones.prof")
-    # stats.strip_dirs()
-    # stats.sort_stats('cumulative', 'calls')
-    # stats.print_stats(40)
-    # sys.exit()
+__all__ = ['data',
+           'matrix',
+           "moremath",
+           "seq",
+           "seq_io",
+           "utils",
+           'transform',
+           ]
 
-    weblogolib._cli.main()
+from corebio._version import __version__, description
+
+user_agent = "corebio/" + __version__ + " (https://github.com/WebLogo/weblogo)"
+
+__doc__ = description + ' : ' + __doc__

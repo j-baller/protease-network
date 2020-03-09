@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-# -------------------------------- WebLogo --------------------------------
-
-#  Copyright (c) 2003-2004 The Regents of the University of California.
-#  Copyright (c) 2005 Gavin E. Crooks
 #  Copyright (c) 2006, The Regents of the University of California, through 
 #  Lawrence Berkeley National Laboratory (subject to receipt of any required
 #  approvals from the U.S. Dept. of Energy).  All rights reserved.
@@ -38,34 +34,70 @@
 #  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 #  POSSIBILITY OF SUCH DAMAGE. 
 
-""" WebLogo is a tool for creating sequence logos from biological sequence
-alignments.  It can be run on the command line, as a standalone webserver, as a
-CGI webapp, or as a python library.
 
-For help on the command line interface run
-    ./weblogo.py --help
+import unittest
 
-To build a simple logo run
-    ./weblogo.py  < cap.fa > logo0.eps
-    
-To run as a standalone webserver at localhost:8080 
-    ./weblogo.py --serve
+from corebio import *
+from corebio._py3k import StringIO
+from corebio.seq import *
+from corebio.seq_io import *
+from corebio.seq_io import msf_io
+from test_corebio import *
 
 
-"""
-import weblogolib._cli
+class test_msf_io(unittest.TestCase):
+    def test_parse_msf(self):
+        f = testdata_stream("dna.msf")
+        seqs = msf_io.read(f)
+        self.assertEqual(len(seqs), 10)
+        self.assertEqual(seqs[1].name, "Carp")
+        self.assertEqual(len(seqs[1]), 705)
+        self.assertEqual(str(seqs[2][0:10]), 'ATGGCCAACC')
+        f.close()
 
-# Standard python voodoo for CLI
-if __name__ == "__main__":
-    ## Code Profiling. Uncomment these lines
-    # import hotshot, hotshot.stats
-    # prof = hotshot.Profile("stones.prof")
-    # prof.runcall(main)
-    # prof.close()
-    # stats = hotshot.stats.load("stones.prof")
-    # stats.strip_dirs()
-    # stats.sort_stats('cumulative', 'calls')
-    # stats.print_stats(40)
-    # sys.exit()
+    def test_parse_msf2(self):
+        f = testdata_stream("cox2.msf")
+        seqs = msf_io.read(f)
+        self.assertEqual(len(seqs), 5)
+        self.assertEqual(seqs[1].name, "cox2_crifa")
+        self.assertEqual(len(seqs[1]), 166)
+        self.assertEqual(str(seqs[2][0:10]), 'MSFILTFWMI')
+        f.close()
 
-    weblogolib._cli.main()
+    def test_parse_1beo(self):
+        f = testdata_stream("1beo.msf")
+        seqs = msf_io.read(f)
+        f.close()
+
+    """ Wrong alphabet should throw a parsing error """
+
+    def test_parse_error(self):
+        f = testdata_stream("cox2.msf")
+        self.assertRaises(ValueError,
+                          msf_io.read, f, nucleic_alphabet)
+        f.close()
+
+    def test_parse_fasta_fail2(self):
+        # should fail with parse error
+        f = testdata_stream("globin.fa")
+        self.assertRaises(ValueError,
+                          msf_io.read, f)
+        f.close()
+
+    def test_parse_plain_fail(self):
+        # should fail with parse error
+        f = StringIO(plain_io.example)
+        self.assertRaises(ValueError,
+                          msf_io.read, f)
+        f.close()
+
+    def test_parse_phylip_fail(self):
+        # should fail with parse error
+        f = testdata_stream("phylip_test_2.phy")
+        self.assertRaises(ValueError,
+                          msf_io.read, f)
+        f.close()
+
+
+if __name__ == '__main__':
+    unittest.main()
