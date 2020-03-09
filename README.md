@@ -13,4 +13,22 @@ These scripts provide the different steps for identifying overrepresented motifs
 ## Function Library
 * **compare_peptides.py** - Library of functions called by other scripts.
 
+## Required Environment/Software
+* Weblogo2 - Weblogo is used to visualize motifs
+* Python3 - The provided scripts were developed and tested in a python3 environment.
+  * Python 3.7.1
+  * GCC 7.3.0, Anaconda on linux
+  * Packages include: Matplotlib and NetworkX
+* Shell scipts for testing are compatible with sh/bash
+* System requirements are highly dependent on kmer count and complexity. Analysis from the associated paper used 4 cores, 200gb RAM and 72 hours max walltime to generate kmer networks 4 at a time 
+
+## License
+
+Copyright 2020 Regents of the University of Minnesota
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
