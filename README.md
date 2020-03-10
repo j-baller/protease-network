@@ -10,6 +10,11 @@ These scripts provide the different steps for identifying overrepresented motifs
 * **Extract_Fullseqs.py** - Pull all the full sequences that contain a specific kmer.
 * **ImageComposite.py** - Accepts a directory path to a folder of WebLogo images. Makes a composite image from these individual images.
 
+## Data Tables
+* **Entropy_calc.txt** - Pre computed table of entropy values.
+* **Hydro_tab.txt** - Hydrophobicity table for filtering peptides for mass spec analysis.
+* **PAM250wX.txt** - PAM250 matrix for use as a distance matrix in the kmer analysis. Xs were added to allow for special treatment fixed sequences flanking the peptides.
+
 ## Function Library
 * **compare_peptides.py** - Library of functions called by other scripts.
 
