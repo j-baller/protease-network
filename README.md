@@ -20,9 +20,9 @@ These scripts provide the different steps for identifying overrepresented motifs
 
 ## Required Environment/Software
 * Weblogo2 - Weblogo is used to visualize motifs
-* Python3 - The provided scripts were developed and tested in a python3 environment.
+* Python3 - The provided scripts were developed and tested in the following python3 environment. The scripts are likely to work in other environments but were not tested for such.
   * Python 3.7.1
-  * GCC 7.3.0, Anaconda on linux
+  * GCC 7.3.0, Anaconda on linux (CentOS 7)
   * Packages include: Matplotlib and NetworkX
 * Shell scipts for testing are compatible with sh/bash
 * System requirements are highly dependent on kmer count and complexity. Analysis from the associated paper used 4 cores, 200gb RAM and 72 hours max walltime to generate kmer networks 4 at a time 
