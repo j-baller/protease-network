@@ -31,7 +31,17 @@ These scripts provide the different steps for identifying overrepresented motifs
 Square bracket denote variable fields based on parameters and script.
 * Kmer_Analysis.py
   * kmer_delete_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].txt
-    * Kmers filtered out based on paramters supplied
+    * Kmers filtered out based on parameters supplied
+  * kmer_frequency_histo_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].png
+    * Frequency histogram showing the distribution of frequencies for the kmers.
+  * kmer_output_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].txt
+    * Kmers that passed all filtering based on parameters supplied
+  * node_info_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].txt
+    * More indepth information about each kmer that passed filtering. Columns are: Kmer sequence, Frequency of occurance, 
+  * network_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].png
+    * A plot of kmers in the network after filtering on all paramters. Line width denotes edge weight.
+  * [File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].log
+    * A copy of the run log for each sample
 
 ## License
 
