@@ -62,7 +62,7 @@ Square bracket denote variable fields based on parameters and script.
   * kmer_output_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].txt
     * Kmers that passed all filtering based on parameters supplied
   * node_info_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].txt
-    * More indepth information about each kmer that passed filtering. Columns are: Kmer sequence, Frequency of occurance, 
+    * More in depth information about each kmer that passed filtering. Columns are: Kmer sequence, Weighted frequency of occurence, Enrichment fraction, Node Degree, Weighted Node Degree
   * network_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].png
     * A plot of kmers in the network after filtering on all paramters. Line width denotes edge weight.
   * [File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].log
