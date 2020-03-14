@@ -28,6 +28,31 @@ These scripts provide the different steps for identifying overrepresented motifs
 * System requirements are highly dependent on kmer count and complexity. Analysis from the associated paper used 4 cores, 200gb RAM and 72 hours max walltime to generate kmer networks 4 at a time 
 
 ## Outputs
+To console:
+* Input path resolved to: 
+  * Resolved path to listed input file
+* Total Seq:
+  * Number of sequences in input file
+* Total background seq: 
+  * Number of sequences in the background seq file
+* Total Nodes:
+  * Number of unique kmers identified. Covers both input and background
+* Total kmers:
+  * Sum of all input kmer weights. This includes frequency of repeat kmers and downweighting due to fixed flanking sequences.
+* Total background kmers:
+  * Sum of all background kmer weights. This includes frequency of repeat kmers and downweighting due to fixed flanking sequences.
+* First Pass Kmers:
+  * Sum of all input kmer weights after filtering on Enrichment vs background and minimum frequency. This includes frequency of repeat kmers and downweighting due to fixed flanking sequences.
+* First Pass Nodes:
+  * Number of unique kmers identified after filtering on Enrichment vs background and minimum frequency. Covers both input and background
+* Second Pass Kmers:
+  * Sum of all input kmer weights after filtering on network degree (based on minimum edge weight). This includes frequency of repeat kmers and downweighting due to fixed flanking sequences.
+* Second Pass Nodes:
+  * Number of unique kmers identified after filtering on network degree (based on minimum edge weight). Covers both input and background
+* Output Name
+  * root used for naming all output files.
+  
+File outputs
 Square bracket denote variable fields based on parameters and script.
 * Kmer_Analysis.py
   * kmer_delete_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].txt
