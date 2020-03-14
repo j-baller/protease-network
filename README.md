@@ -27,6 +27,12 @@ These scripts provide the different steps for identifying overrepresented motifs
 * Shell scipts for testing are compatible with sh/bash
 * System requirements are highly dependent on kmer count and complexity. Analysis from the associated paper used 4 cores, 200gb RAM and 72 hours max walltime to generate kmer networks 4 at a time 
 
+## Outputs
+Square bracket denote variable fields based on parameters and script.
+* Kmer_Analysis.py
+  * kmer_delete_[File1]_vs_[File2]_[kSize]kmer_size[edge_filter]min_edge[min_nodes]min_node[min_deg]min_degree[min_enrich]fold_enrichment[random_num]_[real or rand]_[dist_mat].txt
+    * Kmers filtered out based on paramters supplied
+
 ## License
 
 Copyright 2020 Regents of the University of Minnesota
