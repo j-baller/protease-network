@@ -162,7 +162,7 @@ class Clustering:
 class Empirical_Error:
 	def __init__(self):
 		self._uniqueAA=20
-		ent_handle = open("./Entropy_calc.txt", 'r')
+		ent_handle = open(os.path.dirname(os.path.abspath(__file__))+"/Entropy_calc.txt", 'r')
 		self.entropy_dict = {}
 		for line in ent_handle:
 			samp_size,samp_ent = line.split(" ")
